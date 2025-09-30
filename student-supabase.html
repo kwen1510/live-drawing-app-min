@@ -440,21 +440,109 @@
             redoBtn.disabled = historyStep >= strokes.length - 1;
         }
         
+        // Get IDs of currently visible strokes
+        function getVisibleStrokeIds() {
+            const deletedIds = new Set();
+            const visibleIds = new Set();
+            
+            for (let i = 0; i <= historyStep; i++) {
+                const item = strokes[i];
+                if (!item) continue;
+                
+                if (item.type === 'erase') {
+                    item.deletedIds.forEach(id => deletedIds.add(id));
+                } else if (!item.type && !item.isTeacher) {
+                    visibleIds.add(item.id);
+                }
+            }
+            
+            // Remove deleted from visible
+            deletedIds.forEach(id => visibleIds.delete(id));
+            
+            return visibleIds;
+        }
+        
+        // Compute what changed between two visible sets
+        function computeStateDiff(oldVisibleIds, newVisibleIds) {
+            const added = [];
+            const removed = [];
+            
+            // Find newly visible strokes
+            newVisibleIds.forEach(id => {
+                if (!oldVisibleIds.has(id)) {
+                    const stroke = strokes.find(s => s.id === id);
+                    if (stroke && !stroke.isTeacher) {
+                        added.push({
+                            id: stroke.id,
+                            color: stroke.color,
+                            size: stroke.size,
+                            points: stroke.points
+                        });
+                    }
+                }
+            });
+            
+            // Find newly hidden strokes
+            oldVisibleIds.forEach(id => {
+                if (!newVisibleIds.has(id)) {
+                    removed.push(id);
+                }
+            });
+            
+            return { added, removed };
+        }
+        
         function undo() {
             if (historyStep >= 0) {
+                const oldVisible = getVisibleStrokeIds();
                 historyStep--;
+                const newVisible = getVisibleStrokeIds();
+                
                 redrawCanvas();
                 updateHistoryButtons();
-                saveToSession(); // Save state after undo
+                saveToSession();
+                
+                // Broadcast state changes
+                const diff = computeStateDiff(oldVisible, newVisible);
+                if ((diff.added.length > 0 || diff.removed.length > 0) && channel) {
+                    console.log('📤 Broadcasting undo state change:', diff);
+                    channel.send({
+                        type: 'broadcast',
+                        event: 'student_state_change',
+                        payload: {
+                            username,
+                            added: diff.added,
+                            removed: diff.removed
+                        }
+                    });
+                }
             }
         }
         
         function redo() {
             if (historyStep < strokes.length - 1) {
+                const oldVisible = getVisibleStrokeIds();
                 historyStep++;
+                const newVisible = getVisibleStrokeIds();
+                
                 redrawCanvas();
                 updateHistoryButtons();
-                saveToSession(); // Save state after redo
+                saveToSession();
+                
+                // Broadcast state changes
+                const diff = computeStateDiff(oldVisible, newVisible);
+                if ((diff.added.length > 0 || diff.removed.length > 0) && channel) {
+                    console.log('📤 Broadcasting redo state change:', diff);
+                    channel.send({
+                        type: 'broadcast',
+                        event: 'student_state_change',
+                        payload: {
+                            username,
+                            added: diff.added,
+                            removed: diff.removed
+                        }
+                    });
+                }
             }
         }
         
@@ -471,6 +559,11 @@
                     // This erase action is active, mark its strokes as deleted
                     action.deletedIds.forEach(id => deletedIds.add(id));
                 }
+            }
+            
+            // ALSO include strokes being erased in current drag (real-time feedback)
+            if (isErasing && erasedStrokes.length > 0) {
+                erasedStrokes.forEach(stroke => deletedIds.add(stroke.id));
             }
             
             // Draw all strokes up to historyStep (skip deleted ones)
@@ -604,6 +697,43 @@
                 
                 // Add to strokes array
                 addStroke(teacherStroke);
+            });
+            
+            channel.on('broadcast', { event: 'teacher_state_change' }, ({ payload }) => {
+                if (payload.target !== username) return;
+                
+                console.log('📥 Teacher state change received:', payload);
+                
+                // Add newly visible annotations
+                payload.added.forEach(annotationData => {
+                    if (!strokes.find(s => s.id === annotationData.id)) {
+                        const annotation = {
+                            id: annotationData.id,
+                            color: annotationData.color,
+                            size: annotationData.size,
+                            points: annotationData.points,
+                            isTeacher: true
+                        };
+                        // Add at end of history
+                        strokes.push(annotation);
+                        historyStep = strokes.length - 1;
+                    }
+                });
+                
+                // Remove hidden annotations
+                payload.removed.forEach(id => {
+                    const index = strokes.findIndex(s => s.id === id && s.isTeacher);
+                    if (index >= 0) {
+                        strokes.splice(index, 1);
+                        if (historyStep >= index) {
+                            historyStep = Math.max(-1, historyStep - 1);
+                        }
+                    }
+                });
+                
+                redrawCanvas();
+                updateHistoryButtons();
+                saveToSession();
             });
             
             // Listen for teacher stroke deletions

@@ -563,6 +563,36 @@
                 }
             });
             
+            channel.on('broadcast', { event: 'student_state_change' }, ({ payload }) => {
+                console.log('📥 Student state change received:', payload);
+                const student = students.get(payload.username);
+                if (student) {
+                    // Add newly visible strokes
+                    payload.added.forEach(strokeData => {
+                        if (!student.strokes.find(s => s.id === strokeData.id)) {
+                            const stroke = {
+                                id: strokeData.id,
+                                color: strokeData.color,
+                                size: strokeData.size,
+                                points: strokeData.points,
+                                isTeacher: false
+                            };
+                            student.strokes.push(stroke);
+                        }
+                    });
+                    
+                    // Remove hidden strokes
+                    payload.removed.forEach(id => {
+                        const index = student.strokes.findIndex(s => s.id === id);
+                        if (index >= 0) {
+                            student.strokes.splice(index, 1);
+                        }
+                    });
+                    
+                    redrawStudentCanvas(student);
+                }
+            });
+            
             channel.on('broadcast', { event: 'student_stroke_delete' }, ({ payload }) => {
                 console.log('🗑️ Student deleted stroke:', payload);
                 const student = students.get(payload.username);
@@ -627,7 +657,7 @@
             card.innerHTML = `
                 <h3>${username}</h3>
                 <canvas width="800" height="600"></canvas>
-                <button onclick="annotate('${username}')">Annotate in RED</button>
+                <button onclick="annotate('${username}')">View & Annotate</button>
             `;
             studentsDiv.appendChild(card);
             
@@ -737,6 +767,11 @@
                     action.deletedIds.forEach(id => deletedIds.add(id));
                 }
             });
+            
+            // ALSO include annotations being erased in current drag (real-time feedback)
+            if (isErasingAnnotation && erasedAnnotations.length > 0) {
+                erasedAnnotations.forEach(annotation => deletedIds.add(annotation.id));
+            }
             
             console.log('🎨 Redrawing', student.teacherAnnotations.length, 'stored annotations (', deletedIds.size, 'deleted)');
             
@@ -869,17 +904,112 @@
             redoBtn.disabled = annotationHistoryStep >= annotationHistory.length - 1;
         }
         
+        // Get IDs of currently visible annotations
+        function getVisibleAnnotationIds(student) {
+            if (!student || !student.teacherAnnotations) return new Set();
+            
+            const deletedIds = new Set();
+            const visibleIds = new Set();
+            
+            student.teacherAnnotations.forEach(item => {
+                if (item.type === 'erase') {
+                    item.deletedIds.forEach(id => deletedIds.add(id));
+                } else if (item.points) {
+                    visibleIds.add(item.id);
+                }
+            });
+            
+            // Remove deleted from visible
+            deletedIds.forEach(id => visibleIds.delete(id));
+            
+            return visibleIds;
+        }
+        
+        // Compute what changed between two visible sets
+        function computeAnnotationDiff(oldVisibleIds, newVisibleIds, student) {
+            const added = [];
+            const removed = [];
+            
+            // Find newly visible annotations
+            newVisibleIds.forEach(id => {
+                if (!oldVisibleIds.has(id)) {
+                    const annotation = student.teacherAnnotations.find(a => a.id === id);
+                    if (annotation && annotation.points) {
+                        added.push({
+                            id: annotation.id,
+                            color: annotation.color,
+                            size: annotation.size,
+                            points: annotation.points
+                        });
+                    }
+                }
+            });
+            
+            // Find newly hidden annotations
+            oldVisibleIds.forEach(id => {
+                if (!newVisibleIds.has(id)) {
+                    removed.push(id);
+                }
+            });
+            
+            return { added, removed };
+        }
+        
         function undoAnnotation() {
             if (annotationHistoryStep > 0) {
+                const student = students.get(currentStudent);
+                const oldVisible = getVisibleAnnotationIds(student);
+                
                 annotationHistoryStep--;
                 restoreAnnotationState();
+                
+                // Compute and broadcast changes after state is restored
+                setTimeout(() => {
+                    const newVisible = getVisibleAnnotationIds(student);
+                    const diff = computeAnnotationDiff(oldVisible, newVisible, student);
+                    
+                    if ((diff.added.length > 0 || diff.removed.length > 0) && student) {
+                        console.log('📤 Broadcasting teacher undo state change:', diff);
+                        channel.send({
+                            type: 'broadcast',
+                            event: 'teacher_state_change',
+                            payload: {
+                                target: student.username,
+                                added: diff.added,
+                                removed: diff.removed
+                            }
+                        });
+                    }
+                }, 50); // Small delay for canvas restore
             }
         }
         
         function redoAnnotation() {
             if (annotationHistoryStep < annotationHistory.length - 1) {
+                const student = students.get(currentStudent);
+                const oldVisible = getVisibleAnnotationIds(student);
+                
                 annotationHistoryStep++;
                 restoreAnnotationState();
+                
+                // Compute and broadcast changes after state is restored
+                setTimeout(() => {
+                    const newVisible = getVisibleAnnotationIds(student);
+                    const diff = computeAnnotationDiff(oldVisible, newVisible, student);
+                    
+                    if ((diff.added.length > 0 || diff.removed.length > 0) && student) {
+                        console.log('📤 Broadcasting teacher redo state change:', diff);
+                        channel.send({
+                            type: 'broadcast',
+                            event: 'teacher_state_change',
+                            payload: {
+                                target: student.username,
+                                added: diff.added,
+                                removed: diff.removed
+                            }
+                        });
+                    }
+                }, 50); // Small delay for canvas restore
             }
         }
         
