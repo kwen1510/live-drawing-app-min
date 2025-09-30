@@ -158,11 +158,18 @@
         #modal.open { display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #modalHeader {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
             width: 100%;
             max-width: 1400px;
             margin-bottom: 24px;
+            gap: 16px;
+        }
+        .modal-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
             padding: 8px 16px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 16px;
@@ -216,6 +223,140 @@
             cursor: crosshair;
             border-radius: 12px;
         }
+        
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border-radius: 100px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+        }
+        .toolbar-divider {
+            width: 1px;
+            height: 32px;
+            background: #e5e7eb;
+        }
+        .color-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+        .color-btn.active {
+            border-color: #1e293b;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #1e293b;
+        }
+        .tool-btn {
+            padding: 8px 16px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            color: #64748b;
+        }
+        .tool-btn:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
+        .tool-btn.active {
+            background: #1e293b;
+            color: white;
+            border-color: #1e293b;
+        }
+        .size-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .size-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #e5e7eb;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+        .size-btn:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+        #brushSize {
+            width: 80px;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            background: #f1f5f9;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            color: #475569;
+            transition: all 0.2s;
+        }
+        .action-btn:hover {
+            background: #e2e8f0;
+        }
+        .action-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .action-btn.clear {
+            color: #dc2626;
+        }
+        .action-btn.clear:hover {
+            background: #fee2e2;
+        }
+        .stylus-indicator {
+            padding: 8px 16px;
+            background: #dbeafe;
+            color: #1e40af;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .stylus-indicator:hover {
+            background: #bfdbfe;
+        }
+        .stylus-indicator.off {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        
         .empty-state {
             text-align: center;
             padding: 80px 40px;
@@ -270,8 +411,53 @@
     <!-- Modal for annotation -->
     <div id="modal">
         <div id="modalHeader">
-            <h2 id="modalTitle">Annotating Student</h2>
-            <button id="closeModal">Close</button>
+            <div class="modal-top">
+                <h2 id="modalTitle">Annotating Student</h2>
+                <button id="closeModal">Close</button>
+            </div>
+            
+            <!-- Teacher Toolbar -->
+            <div class="toolbar">
+                <!-- Colors -->
+                <div class="toolbar-group">
+                    <div class="color-btn active" style="background: #dc2626;" data-color="#dc2626" title="Red"></div>
+                    <div class="color-btn" style="background: #9333ea;" data-color="#9333ea" title="Purple"></div>
+                    <div class="color-btn" style="background: #14b8a6;" data-color="#14b8a6" title="Teal"></div>
+                </div>
+                
+                <div class="toolbar-divider"></div>
+                
+                <!-- Pen/Eraser -->
+                <div class="toolbar-group">
+                    <button class="tool-btn active" data-tool="pen">Pen</button>
+                    <button class="tool-btn" data-tool="eraser">Eraser</button>
+                </div>
+                
+                <div class="toolbar-divider"></div>
+                
+                <!-- Brush Size -->
+                <div class="toolbar-group size-control">
+                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">Size</span>
+                    <input type="range" id="brushSize" min="1" max="20" value="4" />
+                    <span id="sizeDisplay" style="font-size: 12px; color: #1e293b; font-weight: 700; min-width: 20px;">4</span>
+                </div>
+                
+                <div class="toolbar-divider"></div>
+                
+                <!-- Actions -->
+                <div class="toolbar-group">
+                    <button class="action-btn" id="undoBtn" disabled>Undo</button>
+                    <button class="action-btn" id="redoBtn" disabled>Redo</button>
+                    <button class="action-btn clear" id="clearBtn">Clear</button>
+                </div>
+                
+                <div class="toolbar-divider"></div>
+                
+                <!-- Stylus Mode -->
+                <div class="stylus-indicator" id="stylusToggle">
+                    Stylus mode (pen only)
+                </div>
+            </div>
         </div>
         <div id="canvasWrapper">
             <canvas id="bigCanvas" width="800" height="600"></canvas>
@@ -458,8 +644,13 @@
             overlayCtx.clearRect(0, 0, 800, 600);
             redrawStoredAnnotations(student);
             
-            modalTitle.textContent = `Annotating ${username} (RED ink)`;
+            modalTitle.textContent = `Annotating ${username}`;
             modal.classList.add('open');
+            
+            // Initialize annotation history
+            annotationHistory = [];
+            annotationHistoryStep = -1;
+            saveAnnotationState();
             
             // Update overlay size AFTER modal is visible
             setTimeout(() => {
@@ -473,13 +664,20 @@
             
             console.log('🎨 Redrawing', student.teacherAnnotations.length, 'stored annotations');
             
-            overlayCtx.strokeStyle = 'red';
-            overlayCtx.lineWidth = 4;
-            overlayCtx.lineCap = 'round';
-            overlayCtx.lineJoin = 'round';
-            
             student.teacherAnnotations.forEach(annotation => {
                 if (!annotation.points || annotation.points.length === 0) return;
+                
+                // Use annotation's saved color/tool/size
+                if (annotation.tool === 'eraser') {
+                    overlayCtx.globalCompositeOperation = 'destination-out';
+                    overlayCtx.strokeStyle = 'rgba(0,0,0,1)';
+                } else {
+                    overlayCtx.globalCompositeOperation = 'source-over';
+                    overlayCtx.strokeStyle = annotation.color || '#dc2626';
+                }
+                overlayCtx.lineWidth = annotation.size || 4;
+                overlayCtx.lineCap = 'round';
+                overlayCtx.lineJoin = 'round';
                 
                 overlayCtx.beginPath();
                 overlayCtx.moveTo(annotation.points[0].x, annotation.points[0].y);
@@ -490,6 +688,8 @@
                 
                 overlayCtx.stroke();
             });
+            
+            overlayCtx.globalCompositeOperation = 'source-over';
         }
         
         function updateOverlaySize() {
@@ -509,15 +709,127 @@
             currentStudent = null;
         };
         
-        // Overlay drawing with smooth stylus
+        // Teacher toolbar controls
+        let currentColor = '#dc2626'; // Red
+        let currentTool = 'pen';
+        let brushSize = 4;
+        let stylusOnly = true;
+        let annotationHistory = [];
+        let annotationHistoryStep = -1;
+        
+        const colorBtns = document.querySelectorAll('.color-btn');
+        const toolBtns = document.querySelectorAll('.tool-btn');
+        const brushSizeInput = document.getElementById('brushSize');
+        const sizeDisplay = document.getElementById('sizeDisplay');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const stylusToggle = document.getElementById('stylusToggle');
+        
+        // Color selection
+        colorBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                colorBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentColor = btn.dataset.color;
+                if (currentTool === 'eraser') {
+                    currentTool = 'pen';
+                    updateToolButtons();
+                }
+            });
+        });
+        
+        // Tool selection
+        toolBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentTool = btn.dataset.tool;
+                updateToolButtons();
+            });
+        });
+        
+        function updateToolButtons() {
+            toolBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tool === currentTool);
+            });
+        }
+        
+        // Brush size
+        brushSizeInput.addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            sizeDisplay.textContent = brushSize;
+        });
+        
+        // Stylus mode toggle
+        stylusToggle.addEventListener('click', () => {
+            stylusOnly = !stylusOnly;
+            stylusToggle.classList.toggle('off', !stylusOnly);
+            stylusToggle.textContent = stylusOnly ? 'Stylus mode (pen only)' : 'All inputs';
+        });
+        
+        // Annotation history management
+        function saveAnnotationState() {
+            annotationHistoryStep++;
+            if (annotationHistoryStep < annotationHistory.length) {
+                annotationHistory.length = annotationHistoryStep;
+            }
+            annotationHistory.push(overlay.toDataURL());
+            updateAnnotationHistoryButtons();
+        }
+        
+        function updateAnnotationHistoryButtons() {
+            undoBtn.disabled = annotationHistoryStep <= 0;
+            redoBtn.disabled = annotationHistoryStep >= annotationHistory.length - 1;
+        }
+        
+        function undoAnnotation() {
+            if (annotationHistoryStep > 0) {
+                annotationHistoryStep--;
+                restoreAnnotationState();
+            }
+        }
+        
+        function redoAnnotation() {
+            if (annotationHistoryStep < annotationHistory.length - 1) {
+                annotationHistoryStep++;
+                restoreAnnotationState();
+            }
+        }
+        
+        function restoreAnnotationState() {
+            const img = new Image();
+            img.onload = () => {
+                overlayCtx.clearRect(0, 0, 800, 600);
+                overlayCtx.drawImage(img, 0, 0);
+                updateAnnotationHistoryButtons();
+            };
+            img.src = annotationHistory[annotationHistoryStep];
+        }
+        
+        function clearAnnotations() {
+            overlayCtx.clearRect(0, 0, 800, 600);
+            const student = students.get(currentStudent);
+            if (student) {
+                student.teacherAnnotations = [];
+                updateStudentPreview(currentStudent);
+            }
+            annotationHistory = [];
+            annotationHistoryStep = -1;
+            saveAnnotationState();
+        }
+        
+        undoBtn.addEventListener('click', undoAnnotation);
+        redoBtn.addEventListener('click', redoAnnotation);
+        clearBtn.addEventListener('click', clearAnnotations);
+        
+        // Overlay drawing with toolbar support
         let lastTeacherPoint = null;
         
         overlay.addEventListener('pointerdown', (e) => {
             const student = students.get(currentStudent);
             if (!student) return;
             
-            // Only allow stylus/pen input - ignore palm touches
-            if (e.pointerType !== 'pen') return;
+            // Stylus mode: only allow pen input
+            if (stylusOnly && e.pointerType !== 'pen') return;
             
             isAnnotating = true;
             const rect = overlay.getBoundingClientRect();
@@ -526,13 +838,25 @@
             
             lastTeacherPoint = { x, y };
             
-            console.log('🎨 Teacher annotation START:', { x, y, target: currentStudent });
+            console.log('🎨 Teacher annotation START:', { x, y, target: currentStudent, color: currentColor, tool: currentTool, size: brushSize });
             
             // Start new annotation path
-            student.currentAnnotation = { points: [{ x, y }] };
+            student.currentAnnotation = { 
+                points: [{ x, y }],
+                color: currentColor,
+                tool: currentTool,
+                size: brushSize
+            };
             
-            overlayCtx.strokeStyle = 'red';
-            overlayCtx.lineWidth = 4;  // Fixed solid tip
+            // Set drawing style based on tool
+            if (currentTool === 'eraser') {
+                overlayCtx.globalCompositeOperation = 'destination-out';
+                overlayCtx.strokeStyle = 'rgba(0,0,0,1)';
+            } else {
+                overlayCtx.globalCompositeOperation = 'source-over';
+                overlayCtx.strokeStyle = currentColor;
+            }
+            overlayCtx.lineWidth = brushSize;
             overlayCtx.lineCap = 'round';
             overlayCtx.lineJoin = 'round';
             overlayCtx.beginPath();
@@ -542,7 +866,15 @@
             channel.send({
                 type: 'broadcast',
                 event: 'teacher_draw',
-                payload: { target: currentStudent, type: 'start', x, y }
+                payload: { 
+                    target: currentStudent, 
+                    type: 'start', 
+                    x, 
+                    y,
+                    color: currentColor,
+                    tool: currentTool,
+                    size: brushSize
+                }
             });
         });
         
@@ -556,12 +888,11 @@
             const x = (e.clientX - rect.left) * (800 / rect.width);
             const y = (e.clientY - rect.top) * (600 / rect.height);
             
-            // Smooth line interpolation with fixed width
+            // Smooth line interpolation
             if (lastTeacherPoint) {
                 const midX = (lastTeacherPoint.x + x) / 2;
                 const midY = (lastTeacherPoint.y + y) / 2;
                 
-                overlayCtx.lineWidth = 4;  // Fixed solid tip
                 overlayCtx.quadraticCurveTo(lastTeacherPoint.x, lastTeacherPoint.y, midX, midY);
                 overlayCtx.stroke();
                 overlayCtx.beginPath();
@@ -591,14 +922,19 @@
             if (student && student.currentAnnotation && student.currentAnnotation.points.length > 0) {
                 // Save completed annotation
                 student.teacherAnnotations.push(student.currentAnnotation);
+                student.currentAnnotation = null;
                 console.log('💾 Saved annotation. Total:', student.teacherAnnotations.length);
                 
                 // Update preview card with annotations
                 updateStudentPreview(currentStudent);
+                
+                // Save state for undo/redo
+                saveAnnotationState();
             }
             
             isAnnotating = false;
             lastTeacherPoint = null;
+            overlayCtx.globalCompositeOperation = 'source-over';
             
             channel.send({
                 type: 'broadcast',

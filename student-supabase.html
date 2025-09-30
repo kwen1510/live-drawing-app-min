@@ -96,6 +96,141 @@
             box-shadow: 0 30px 90px rgba(0,0,0,0.3);
             padding: 24px;
         }
+        
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border-radius: 100px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+        }
+        .toolbar-divider {
+            width: 1px;
+            height: 32px;
+            background: #e5e7eb;
+        }
+        .color-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+        .color-btn.active {
+            border-color: #1e293b;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #1e293b;
+        }
+        .tool-btn {
+            padding: 8px 16px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            color: #64748b;
+        }
+        .tool-btn:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
+        .tool-btn.active {
+            background: #1e293b;
+            color: white;
+            border-color: #1e293b;
+        }
+        .size-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .size-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #e5e7eb;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+        .size-btn:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+        #brushSize {
+            width: 80px;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            background: #f1f5f9;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            color: #475569;
+            transition: all 0.2s;
+        }
+        .action-btn:hover {
+            background: #e2e8f0;
+        }
+        .action-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .action-btn.clear {
+            color: #dc2626;
+        }
+        .action-btn.clear:hover {
+            background: #fee2e2;
+        }
+        .stylus-indicator {
+            padding: 8px 16px;
+            background: #dbeafe;
+            color: #1e40af;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .stylus-indicator:hover {
+            background: #bfdbfe;
+        }
+        .stylus-indicator.off {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+        
         canvas {
             border: 3px solid #e5e7eb;
             border-radius: 16px;
@@ -118,9 +253,52 @@
 
     <div id="appContainer">
         <h1>Student Canvas</h1>
-        <div class="info">Draw with BLACK ink. Your teacher can see everything!</div>
+        <div class="info">Draw with your chosen color. Your teacher can see everything!</div>
         <div id="status" class="connecting">Connecting...</div>
         <div id="canvasContainer">
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <!-- Colors -->
+                <div class="toolbar-group">
+                    <div class="color-btn active" style="background: #000000;" data-color="#000000" title="Black"></div>
+                    <div class="color-btn" style="background: #3b82f6;" data-color="#3b82f6" title="Blue"></div>
+                    <div class="color-btn" style="background: #22c55e;" data-color="#22c55e" title="Green"></div>
+                </div>
+                
+                <div class="toolbar-divider"></div>
+                
+                <!-- Pen/Eraser -->
+                <div class="toolbar-group">
+                    <button class="tool-btn active" data-tool="pen">Pen</button>
+                    <button class="tool-btn" data-tool="eraser">Eraser</button>
+                </div>
+                
+                <div class="toolbar-divider"></div>
+                
+                <!-- Brush Size -->
+                <div class="toolbar-group size-control">
+                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">Size</span>
+                    <input type="range" id="brushSize" min="1" max="20" value="3" />
+                    <span id="sizeDisplay" style="font-size: 12px; color: #1e293b; font-weight: 700; min-width: 20px;">3</span>
+                </div>
+                
+                <div class="toolbar-divider"></div>
+                
+                <!-- Actions -->
+                <div class="toolbar-group">
+                    <button class="action-btn" id="undoBtn" disabled>Undo</button>
+                    <button class="action-btn" id="redoBtn" disabled>Redo</button>
+                    <button class="action-btn clear" id="clearBtn">Clear</button>
+                </div>
+                
+                <div class="toolbar-divider"></div>
+                
+                <!-- Stylus Mode -->
+                <div class="stylus-indicator" id="stylusToggle">
+                    Stylus mode (pen only)
+                </div>
+            </div>
+            
             <canvas id="canvas" width="800" height="600"></canvas>
         </div>
     </div>
@@ -145,11 +323,119 @@
         let username, sessionCode;
         let isDrawing = false;
         
+        // Drawing state
+        let currentColor = '#000000';
+        let currentTool = 'pen';
+        let brushSize = 3;
+        let stylusOnly = true;
+        let history = [];
+        let historyStep = -1;
+        
         // Setup canvas
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, 800, 600);
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
+        saveState();
+        
+        // Toolbar controls
+        const colorBtns = document.querySelectorAll('.color-btn');
+        const toolBtns = document.querySelectorAll('.tool-btn');
+        const brushSizeInput = document.getElementById('brushSize');
+        const sizeDisplay = document.getElementById('sizeDisplay');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const stylusToggle = document.getElementById('stylusToggle');
+        
+        // Color selection
+        colorBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                colorBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentColor = btn.dataset.color;
+                if (currentTool === 'eraser') {
+                    currentTool = 'pen';
+                    updateToolButtons();
+                }
+            });
+        });
+        
+        // Tool selection
+        toolBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentTool = btn.dataset.tool;
+                updateToolButtons();
+            });
+        });
+        
+        function updateToolButtons() {
+            toolBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tool === currentTool);
+            });
+        }
+        
+        // Brush size
+        brushSizeInput.addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            sizeDisplay.textContent = brushSize;
+        });
+        
+        // Stylus mode toggle
+        stylusToggle.addEventListener('click', () => {
+            stylusOnly = !stylusOnly;
+            stylusToggle.classList.toggle('off', !stylusOnly);
+            stylusToggle.textContent = stylusOnly ? 'Stylus mode (pen only)' : 'All inputs';
+        });
+        
+        // History management
+        function saveState() {
+            historyStep++;
+            if (historyStep < history.length) {
+                history.length = historyStep;
+            }
+            history.push(canvas.toDataURL());
+            updateHistoryButtons();
+        }
+        
+        function updateHistoryButtons() {
+            undoBtn.disabled = historyStep <= 0;
+            redoBtn.disabled = historyStep >= history.length - 1;
+        }
+        
+        function undo() {
+            if (historyStep > 0) {
+                historyStep--;
+                restoreState();
+            }
+        }
+        
+        function redo() {
+            if (historyStep < history.length - 1) {
+                historyStep++;
+                restoreState();
+            }
+        }
+        
+        function restoreState() {
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, 800, 600);
+                ctx.drawImage(img, 0, 0);
+                updateHistoryButtons();
+            };
+            img.src = history[historyStep];
+        }
+        
+        function clearCanvas() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, 800, 600);
+            saveState();
+        }
+        
+        undoBtn.addEventListener('click', undo);
+        redoBtn.addEventListener('click', redo);
+        clearBtn.addEventListener('click', clearCanvas);
         
         window.login = async function() {
             username = usernameInput.value.trim();
@@ -191,30 +477,33 @@
                     return;
                 }
                 
-                const { type, x, y } = payload;
-                console.log('✅ Drawing teacher annotation:', { type, x, y });
+                const { type, x, y, color, tool, size } = payload;
+                console.log('✅ Drawing teacher annotation:', { type, x, y, color, tool, size });
                 
                 // Save current drawing state
                 ctx.save();
                 
                 if (type === 'start') {
-                    ctx.strokeStyle = 'red';
-                    ctx.lineWidth = 4;
+                    // Set up drawing style based on teacher's toolbar settings
+                    if (tool === 'eraser') {
+                        ctx.globalCompositeOperation = 'destination-out';
+                        ctx.strokeStyle = 'rgba(0,0,0,1)';
+                    } else {
+                        ctx.globalCompositeOperation = 'source-over';
+                        ctx.strokeStyle = color || '#dc2626'; // Default to red
+                    }
+                    ctx.lineWidth = size || 4;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
                     ctx.beginPath();
                     ctx.moveTo(x, y);
-                    console.log('🎨 Started RED at:', x, y);
+                    console.log('🎨 Started annotation at:', x, y, 'color:', color, 'size:', size);
                 } else if (type === 'move') {
-                    ctx.strokeStyle = 'red';
-                    ctx.lineWidth = 4;
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
                     ctx.lineTo(x, y);
                     ctx.stroke();
-                    console.log('🎨 Drawing RED to:', x, y);
+                    console.log('🎨 Drawing annotation to:', x, y);
                 } else if (type === 'end') {
-                    console.log('🎨 Finished RED annotation');
+                    console.log('🎨 Finished annotation');
                     ctx.restore();
                 }
             });
@@ -239,12 +528,12 @@
             });
         }
         
-        // Drawing with smooth stylus support
+        // Drawing with toolbar support
         let lastPoint = null;
         
         canvas.addEventListener('pointerdown', (e) => {
-            // Only allow stylus/pen input - ignore palm touches
-            if (e.pointerType !== 'pen') return;
+            // Stylus mode: only allow pen input
+            if (stylusOnly && e.pointerType !== 'pen') return;
             
             isDrawing = true;
             const rect = canvas.getBoundingClientRect();
@@ -253,8 +542,15 @@
             
             lastPoint = { x, y };
             
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 3;  // Fixed solid tip
+            // Set drawing style based on tool
+            if (currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.strokeStyle = 'rgba(0,0,0,1)';
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = currentColor;
+            }
+            ctx.lineWidth = brushSize;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.beginPath();
@@ -263,7 +559,15 @@
             channel?.send({
                 type: 'broadcast',
                 event: 'student_draw',
-                payload: { username, type: 'start', x, y }
+                payload: { 
+                    username, 
+                    type: 'start', 
+                    x, 
+                    y,
+                    color: currentColor,
+                    tool: currentTool,
+                    size: brushSize
+                }
             });
         });
         
@@ -274,12 +578,11 @@
             const x = (e.clientX - rect.left) * (800 / rect.width);
             const y = (e.clientY - rect.top) * (600 / rect.height);
             
-            // Smooth line interpolation with fixed width
+            // Smooth line interpolation
             if (lastPoint) {
                 const midX = (lastPoint.x + x) / 2;
                 const midY = (lastPoint.y + y) / 2;
                 
-                ctx.lineWidth = 3;  // Fixed solid tip
                 ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, midX, midY);
                 ctx.stroke();
                 ctx.beginPath();
@@ -299,6 +602,8 @@
             if (!isDrawing) return;
             isDrawing = false;
             lastPoint = null;
+            ctx.globalCompositeOperation = 'source-over';
+            saveState();
             
             channel?.send({
                 type: 'broadcast',
@@ -311,6 +616,7 @@
             if (!isDrawing) return;
             isDrawing = false;
             lastPoint = null;
+            ctx.globalCompositeOperation = 'source-over';
         });
     </script>
 </body>
