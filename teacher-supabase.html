@@ -389,7 +389,7 @@
         <h1>📊 Teacher Dashboard</h1>
         <div class="controls">
             <input type="text" id="sessionInput" placeholder="Session code" maxlength="10" value="TEST123">
-            <button onclick="startSession()">Start Session</button>
+            <button id="startSessionBtn">Start Session</button>
             <span id="status" class="connecting">Not connected</span>
         </div>
         <div id="sessionInfo">
@@ -500,7 +500,7 @@
             setTimeout(startSession, 100);
         });
         
-        window.startSession = async function() {
+        async function startSession() {
             sessionCode = sessionInput.value.trim().toUpperCase();
             if (!sessionCode) {
                 alert('Please enter a session code');
@@ -508,8 +508,18 @@
             }
             
             sessionInput.disabled = true;
+            startSessionBtn.disabled = true;
             await setupSupabase();
-        };
+        }
+        
+        // Attach event listener to start button
+        const startSessionBtn = document.getElementById('startSessionBtn');
+        startSessionBtn.addEventListener('click', startSession);
+        
+        // Allow Enter key to submit
+        sessionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') startSession();
+        });
         
         async function setupSupabase() {
             status.textContent = 'Connecting...';
@@ -536,8 +546,39 @@
             });
             
             // Listen for student drawing
-            channel.on('broadcast', { event: 'student_draw' }, ({ payload }) => {
-                drawOnStudent(payload.username, payload);
+            // Listen for student stroke events
+            channel.on('broadcast', { event: 'student_stroke_end' }, ({ payload }) => {
+                console.log('📥 Student stroke received:', payload);
+                const student = students.get(payload.username);
+                if (student) {
+                    const stroke = {
+                        id: payload.stroke.id,
+                        color: payload.stroke.color,
+                        size: payload.stroke.size,
+                        points: payload.stroke.points,
+                        isTeacher: false
+                    };
+                    student.strokes.push(stroke);
+                    redrawStudentCanvas(student);
+                }
+            });
+            
+            channel.on('broadcast', { event: 'student_stroke_delete' }, ({ payload }) => {
+                console.log('🗑️ Student deleted stroke:', payload);
+                const student = students.get(payload.username);
+                if (student) {
+                    student.strokes = student.strokes.filter(s => s.id !== payload.strokeId);
+                    redrawStudentCanvas(student);
+                }
+            });
+            
+            channel.on('broadcast', { event: 'student_clear' }, ({ payload }) => {
+                console.log('🧹 Student cleared canvas:', payload);
+                const student = students.get(payload.username);
+                if (student) {
+                    student.strokes = student.strokes.filter(s => s.isTeacher);
+                    redrawStudentCanvas(student);
+                }
             });
             
             channel.subscribe((channelStatus) => {
@@ -570,12 +611,13 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             
-            // Store student data with annotation storage
-            students.set(username, { 
+            // Store student data with stroke-based system
+            students.set(username, {
+                username,  // Store username for reference
                 canvas, 
-                ctx, 
-                isDrawing: false,
-                teacherAnnotations: [],  // Store teacher's RED annotations
+                ctx,
+                strokes: [],  // All strokes (student + teacher)
+                teacherAnnotations: [],  // Store teacher's annotations
                 currentAnnotation: null  // Current annotation being drawn
             });
             
@@ -592,37 +634,63 @@
             studentCount.textContent = students.size;
         }
         
-        function drawOnStudent(username, payload) {
-            const student = students.get(username);
+        function redrawStudentCanvas(student) {
             if (!student) return;
             
-            const { type, x, y } = payload;
+            // Clear canvas
+            student.ctx.fillStyle = 'white';
+            student.ctx.fillRect(0, 0, 800, 600);
             
-            if (type === 'start') {
-                student.ctx.strokeStyle = 'black';
-                student.ctx.lineWidth = 3;
+            // Draw all strokes
+            student.strokes.forEach(stroke => {
+                if (!stroke || !stroke.points || stroke.points.length === 0) return;
+                
+                student.ctx.globalCompositeOperation = 'source-over';
+                
+                // Handle single-point strokes (dots)
+                if (stroke.points.length === 1) {
+                    const point = stroke.points[0];
+                    student.ctx.beginPath();
+                    student.ctx.arc(point.x, point.y, stroke.size / 2, 0, Math.PI * 2);
+                    student.ctx.fillStyle = stroke.color;
+                    student.ctx.fill();
+                    return;
+                }
+                
+                // Handle multi-point strokes (lines)
+                student.ctx.strokeStyle = stroke.color;
+                student.ctx.lineWidth = stroke.size;
+                student.ctx.lineCap = 'round';
+                student.ctx.lineJoin = 'round';
+                
                 student.ctx.beginPath();
-                student.ctx.moveTo(x, y);
-                student.isDrawing = true;
-            } else if (type === 'move' && student.isDrawing) {
-                student.ctx.lineTo(x, y);
+                student.ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                
+                for (let i = 1; i < stroke.points.length; i++) {
+                    const prev = stroke.points[i - 1];
+                    const curr = stroke.points[i];
+                    const midX = (prev.x + curr.x) / 2;
+                    const midY = (prev.y + curr.y) / 2;
+                    student.ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+                }
+                
                 student.ctx.stroke();
-            } else if (type === 'end') {
-                student.isDrawing = false;
-            }
+            });
             
-            // Update preview
+            // Update preview card
             const card = Array.from(studentsDiv.children).find(c => 
-                c.querySelector('h3').textContent === username
+                c.querySelector('h3').textContent === student.username
             );
             if (card) {
                 const previewCanvas = card.querySelector('canvas');
                 const previewCtx = previewCanvas.getContext('2d');
+                previewCtx.clearRect(0, 0, 800, 600);
                 previewCtx.drawImage(student.canvas, 0, 0);
             }
             
             // Update big canvas if this student is open
-            if (currentStudent === username && modal.classList.contains('open')) {
+            if (currentStudent === student.username && modal.classList.contains('open')) {
+                bigCtx.clearRect(0, 0, 800, 600);
                 bigCtx.drawImage(student.canvas, 0, 0);
             }
         }
@@ -662,19 +730,35 @@
         function redrawStoredAnnotations(student) {
             if (!student.teacherAnnotations || student.teacherAnnotations.length === 0) return;
             
-            console.log('🎨 Redrawing', student.teacherAnnotations.length, 'stored annotations');
+            // Build set of deleted annotation IDs by processing erase actions
+            const deletedIds = new Set();
+            student.teacherAnnotations.forEach(action => {
+                if (action && action.type === 'erase') {
+                    action.deletedIds.forEach(id => deletedIds.add(id));
+                }
+            });
+            
+            console.log('🎨 Redrawing', student.teacherAnnotations.length, 'stored annotations (', deletedIds.size, 'deleted)');
             
             student.teacherAnnotations.forEach(annotation => {
+                if (!annotation || annotation.type === 'erase') return; // Skip erase actions
+                if (deletedIds.has(annotation.id)) return; // Skip deleted annotations
                 if (!annotation.points || annotation.points.length === 0) return;
                 
-                // Use annotation's saved color/tool/size
-                if (annotation.tool === 'eraser') {
-                    overlayCtx.globalCompositeOperation = 'destination-out';
-                    overlayCtx.strokeStyle = 'rgba(0,0,0,1)';
-                } else {
-                    overlayCtx.globalCompositeOperation = 'source-over';
-                    overlayCtx.strokeStyle = annotation.color || '#dc2626';
+                overlayCtx.globalCompositeOperation = 'source-over';
+                
+                // Handle single-point annotations (dots)
+                if (annotation.points.length === 1) {
+                    const point = annotation.points[0];
+                    overlayCtx.beginPath();
+                    overlayCtx.arc(point.x, point.y, (annotation.size || 4) / 2, 0, Math.PI * 2);
+                    overlayCtx.fillStyle = annotation.color || '#dc2626';
+                    overlayCtx.fill();
+                    return;
                 }
+                
+                // Handle multi-point annotations (lines)
+                overlayCtx.strokeStyle = annotation.color || '#dc2626';
                 overlayCtx.lineWidth = annotation.size || 4;
                 overlayCtx.lineCap = 'round';
                 overlayCtx.lineJoin = 'round';
@@ -683,7 +767,11 @@
                 overlayCtx.moveTo(annotation.points[0].x, annotation.points[0].y);
                 
                 for (let i = 1; i < annotation.points.length; i++) {
-                    overlayCtx.lineTo(annotation.points[i].x, annotation.points[i].y);
+                    const prev = annotation.points[i - 1];
+                    const curr = annotation.points[i];
+                    const midX = (prev.x + curr.x) / 2;
+                    const midY = (prev.y + curr.y) / 2;
+                    overlayCtx.quadraticCurveTo(prev.x, prev.y, midX, midY);
                 }
                 
                 overlayCtx.stroke();
@@ -798,7 +886,11 @@
         function restoreAnnotationState() {
             const img = new Image();
             img.onload = () => {
+                // Reset composite operation and clear
+                overlayCtx.globalCompositeOperation = 'source-over';
                 overlayCtx.clearRect(0, 0, 800, 600);
+                // Overlay doesn't need white background (transparent)
+                // Draw saved state
                 overlayCtx.drawImage(img, 0, 0);
                 updateAnnotationHistoryButtons();
             };
@@ -821,8 +913,104 @@
         redoBtn.addEventListener('click', redoAnnotation);
         clearBtn.addEventListener('click', clearAnnotations);
         
+        // Eraser: delete annotations along drag path
+        function deleteAnnotationsInPath(x, y, student) {
+            const eraserRadius = Math.max(30, brushSize * 3); // Larger, smoother eraser (min 30px)
+            const deletedThisFrame = new Set();
+            
+            // Build set of currently deleted IDs (from active erase actions)
+            const currentlyDeletedIds = new Set();
+            student.teacherAnnotations.forEach(action => {
+                if (action && action.type === 'erase') {
+                    action.deletedIds.forEach(id => currentlyDeletedIds.add(id));
+                }
+            });
+            
+            // Find all annotations that intersect with eraser position
+            for (let i = student.teacherAnnotations.length - 1; i >= 0; i--) {
+                const annotation = student.teacherAnnotations[i];
+                if (!annotation || annotation.type === 'erase') continue; // Skip erase actions
+                if (!annotation.points) continue;
+                if (currentlyDeletedIds.has(annotation.id)) continue; // Already deleted by an erase action
+                if (erasedAnnotations.find(e => e.id === annotation.id)) continue; // Already deleted in this drag
+                
+                // Check if any point in the annotation is within eraser radius
+                // Also check line segments for better detection
+                let shouldDelete = false;
+                
+                for (let j = 0; j < annotation.points.length; j++) {
+                    const point = annotation.points[j];
+                    const dist = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
+                    
+                    // Direct point hit
+                    if (dist < eraserRadius + (annotation.size || 4) / 2) {
+                        shouldDelete = true;
+                        break;
+                    }
+                    
+                    // Check line segment if not first point
+                    if (j > 0) {
+                        const prevPoint = annotation.points[j - 1];
+                        const lineDistSq = distToSegmentSquared(x, y, prevPoint.x, prevPoint.y, point.x, point.y);
+                        if (lineDistSq < (eraserRadius + (annotation.size || 4) / 2) ** 2) {
+                            shouldDelete = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (shouldDelete) {
+                    console.log('🗑️ Teacher deleting annotation:', annotation.id);
+                    
+                    // Track for this erase action
+                    deletedThisFrame.add(annotation.id);
+                    erasedAnnotations.push(annotation);
+                    
+                    // Notify student
+                    channel.send({
+                        type: 'broadcast',
+                        event: 'teacher_stroke_delete',
+                        payload: { target: student.username, strokeId: annotation.id }
+                    });
+                }
+            }
+            
+            // Redraw if anything was deleted - FORCE CLEAR AND REDRAW
+            if (deletedThisFrame.size > 0) {
+                console.log('✅ Deleted', deletedThisFrame.size, 'annotations. Redrawing overlay...');
+                
+                // Clear overlay completely
+                overlayCtx.clearRect(0, 0, 800, 600);
+                
+                // Redraw remaining annotations
+                redrawStoredAnnotations(student);
+                
+                // Update preview card
+                updateStudentPreview(student.username);
+            }
+        }
+        
+        // Helper: distance from point to line segment (squared)
+        function distToSegmentSquared(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const lengthSq = dx * dx + dy * dy;
+            
+            if (lengthSq === 0) return (px - x1) ** 2 + (py - y1) ** 2;
+            
+            let t = ((px - x1) * dx + (py - y1) * dy) / lengthSq;
+            t = Math.max(0, Math.min(1, t));
+            
+            const projX = x1 + t * dx;
+            const projY = y1 + t * dy;
+            
+            return (px - projX) ** 2 + (py - projY) ** 2;
+        }
+        
         // Overlay drawing with toolbar support
         let lastTeacherPoint = null;
+        let erasedAnnotations = []; // Track annotations deleted in current eraser drag
+        let isErasingAnnotation = false;
         
         overlay.addEventListener('pointerdown', (e) => {
             const student = students.get(currentStudent);
@@ -831,62 +1019,58 @@
             // Stylus mode: only allow pen input
             if (stylusOnly && e.pointerType !== 'pen') return;
             
-            isAnnotating = true;
             const rect = overlay.getBoundingClientRect();
             const x = (e.clientX - rect.left) * (800 / rect.width);
             const y = (e.clientY - rect.top) * (600 / rect.height);
             
-            lastTeacherPoint = { x, y };
-            
-            console.log('🎨 Teacher annotation START:', { x, y, target: currentStudent, color: currentColor, tool: currentTool, size: brushSize });
-            
-            // Start new annotation path
-            student.currentAnnotation = { 
-                points: [{ x, y }],
-                color: currentColor,
-                tool: currentTool,
-                size: brushSize
-            };
-            
-            // Set drawing style based on tool
             if (currentTool === 'eraser') {
-                overlayCtx.globalCompositeOperation = 'destination-out';
-                overlayCtx.strokeStyle = 'rgba(0,0,0,1)';
+                // Start erasing annotations - track deleted annotations
+                isErasingAnnotation = true;
+                erasedAnnotations = [];
+                lastTeacherPoint = { x, y };
+                deleteAnnotationsInPath(x, y, student);
             } else {
+                // Pen: start new annotation stroke
+                isAnnotating = true;
+                lastTeacherPoint = { x, y };
+                
+                console.log('🎨 Teacher annotation START:', { x, y, target: currentStudent, color: currentColor, size: brushSize });
+                
+                student.currentAnnotation = { 
+                    id: Date.now() + '-' + Math.random(),
+                    points: [{ x, y }],
+                    color: currentColor,
+                    size: brushSize,
+                    isTeacher: true
+                };
+                
+                // Draw preview
                 overlayCtx.globalCompositeOperation = 'source-over';
                 overlayCtx.strokeStyle = currentColor;
+                overlayCtx.lineWidth = brushSize;
+                overlayCtx.lineCap = 'round';
+                overlayCtx.lineJoin = 'round';
+                overlayCtx.beginPath();
+                overlayCtx.moveTo(x, y);
             }
-            overlayCtx.lineWidth = brushSize;
-            overlayCtx.lineCap = 'round';
-            overlayCtx.lineJoin = 'round';
-            overlayCtx.beginPath();
-            overlayCtx.moveTo(x, y);
-            
-            // Notify student
-            channel.send({
-                type: 'broadcast',
-                event: 'teacher_draw',
-                payload: { 
-                    target: currentStudent, 
-                    type: 'start', 
-                    x, 
-                    y,
-                    color: currentColor,
-                    tool: currentTool,
-                    size: brushSize
-                }
-            });
         });
         
         overlay.addEventListener('pointermove', (e) => {
-            if (!isAnnotating) return;
-            
             const student = students.get(currentStudent);
-            if (!student || !student.currentAnnotation) return;
+            if (!student) return;
             
             const rect = overlay.getBoundingClientRect();
             const x = (e.clientX - rect.left) * (800 / rect.width);
             const y = (e.clientY - rect.top) * (600 / rect.height);
+            
+            if (isErasingAnnotation) {
+                // Eraser: delete annotations along path
+                deleteAnnotationsInPath(x, y, student);
+                lastTeacherPoint = { x, y };
+                return;
+            }
+            
+            if (!isAnnotating || !student.currentAnnotation) return;
             
             // Smooth line interpolation
             if (lastTeacherPoint) {
@@ -903,26 +1087,63 @@
             
             // Store point in current annotation
             student.currentAnnotation.points.push({ x, y });
-            
-            // Notify student
-            channel.send({
-                type: 'broadcast',
-                event: 'teacher_draw',
-                payload: { target: currentStudent, type: 'move', x, y }
-            });
         });
         
         overlay.addEventListener('pointerup', stopAnnotating);
         overlay.addEventListener('pointerleave', stopAnnotating);
         
         function stopAnnotating() {
+            const student = students.get(currentStudent);
+            
+            if (isErasingAnnotation) {
+                // Finish erasing annotations
+                isErasingAnnotation = false;
+                lastTeacherPoint = null;
+                
+                if (erasedAnnotations.length > 0 && student) {
+                    console.log('✅ Erased', erasedAnnotations.length, 'annotations');
+                    
+                    // Create an "erase action" object to track what was deleted
+                    const eraseAction = {
+                        id: Date.now() + '-erase-' + Math.random(),
+                        type: 'erase',
+                        deletedAnnotations: [...erasedAnnotations], // Copy of deleted annotations
+                        deletedIds: erasedAnnotations.map(a => a.id)
+                    };
+                    
+                    // Add erase action to teacherAnnotations
+                    student.teacherAnnotations.push(eraseAction);
+                    
+                    // Redraw to ensure consistency
+                    overlayCtx.clearRect(0, 0, 800, 600);
+                    redrawStoredAnnotations(student);
+                    updateStudentPreview(student.username);
+                    
+                    // Save state for undo/redo
+                    saveAnnotationState();
+                }
+                return;
+            }
+            
             if (!isAnnotating) return;
             
-            const student = students.get(currentStudent);
             if (student && student.currentAnnotation && student.currentAnnotation.points.length > 0) {
+                // Handle single-point annotations (dots)
+                if (student.currentAnnotation.points.length === 1) {
+                    const point = student.currentAnnotation.points[0];
+                    overlayCtx.beginPath();
+                    overlayCtx.arc(point.x, point.y, brushSize / 2, 0, Math.PI * 2);
+                    overlayCtx.fillStyle = currentColor;
+                    overlayCtx.fill();
+                }
+                
                 // Save completed annotation
-                student.teacherAnnotations.push(student.currentAnnotation);
-                student.currentAnnotation = null;
+                const annotation = student.currentAnnotation;
+                student.teacherAnnotations.push(annotation);
+                
+                // Add to student's strokes array too
+                student.strokes.push(annotation);
+                
                 console.log('💾 Saved annotation. Total:', student.teacherAnnotations.length);
                 
                 // Update preview card with annotations
@@ -930,17 +1151,28 @@
                 
                 // Save state for undo/redo
                 saveAnnotationState();
+                
+                // Send complete stroke to student
+                channel.send({
+                    type: 'broadcast',
+                    event: 'teacher_stroke_end',
+                    payload: { 
+                        target: currentStudent,
+                        stroke: {
+                            id: annotation.id,
+                            color: annotation.color,
+                            size: annotation.size,
+                            points: annotation.points
+                        }
+                    }
+                });
+                
+                student.currentAnnotation = null;
             }
             
             isAnnotating = false;
             lastTeacherPoint = null;
             overlayCtx.globalCompositeOperation = 'source-over';
-            
-            channel.send({
-                type: 'broadcast',
-                event: 'teacher_draw',
-                payload: { target: currentStudent, type: 'end' }
-            });
         }
         
         function updateStudentPreview(username) {
@@ -989,3 +1221,4 @@
     </script>
 </body>
 </html>
+

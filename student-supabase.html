@@ -248,7 +248,7 @@
         <h1>Student Login</h1>
         <input type="text" id="usernameInput" placeholder="Your name" maxlength="30" required autofocus>
         <input type="text" id="sessionInput" placeholder="Session code (e.g., ABC123)" maxlength="10" required value="TEST123">
-        <button onclick="login()">Join Session</button>
+        <button id="loginBtn">Join Session</button>
     </div>
 
     <div id="appContainer">
@@ -328,7 +328,10 @@
         let currentTool = 'pen';
         let brushSize = 3;
         let stylusOnly = true;
-        let history = [];
+        
+        // Path-based drawing system
+        let strokes = []; // All strokes (student + teacher)
+        let currentStroke = null;
         let historyStep = -1;
         
         // Setup canvas
@@ -336,7 +339,6 @@
         ctx.fillRect(0, 0, 800, 600);
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        saveState();
         
         // Toolbar controls
         const colorBtns = document.querySelectorAll('.color-btn');
@@ -347,6 +349,7 @@
         const redoBtn = document.getElementById('redoBtn');
         const clearBtn = document.getElementById('clearBtn');
         const stylusToggle = document.getElementById('stylusToggle');
+        const loginBtn = document.getElementById('loginBtn');
         
         // Color selection
         colorBtns.forEach(btn => {
@@ -388,56 +391,160 @@
             stylusToggle.textContent = stylusOnly ? 'Stylus mode (pen only)' : 'All inputs';
         });
         
-        // History management
-        function saveState() {
-            historyStep++;
-            if (historyStep < history.length) {
-                history.length = historyStep;
+        // Session storage for robustness
+        function saveToSession() {
+            try {
+                const sessionData = {
+                    strokes: strokes,
+                    historyStep: historyStep,
+                    username: username,
+                    timestamp: Date.now()
+                };
+                sessionStorage.setItem('student_drawing_' + username, JSON.stringify(sessionData));
+            } catch (e) {
+                console.warn('Failed to save to session storage:', e);
             }
-            history.push(canvas.toDataURL());
+        }
+        
+        function loadFromSession() {
+            try {
+                const savedData = sessionStorage.getItem('student_drawing_' + username);
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    strokes = data.strokes || [];
+                    historyStep = data.historyStep ?? -1;
+                    redrawCanvas();
+                    updateHistoryButtons();
+                    console.log('✅ Restored', strokes.length, 'strokes from session');
+                }
+            } catch (e) {
+                console.warn('Failed to load from session storage:', e);
+            }
+        }
+        
+        // Stroke management
+        function addStroke(stroke) {
+            // Remove any strokes after current position (for redo)
+            if (historyStep < strokes.length - 1) {
+                strokes.length = historyStep + 1;
+            }
+            strokes.push(stroke);
+            historyStep = strokes.length - 1;
+            redrawCanvas();
             updateHistoryButtons();
+            saveToSession(); // Auto-save after every action
         }
         
         function updateHistoryButtons() {
-            undoBtn.disabled = historyStep <= 0;
-            redoBtn.disabled = historyStep >= history.length - 1;
+            undoBtn.disabled = historyStep < 0;
+            redoBtn.disabled = historyStep >= strokes.length - 1;
         }
         
         function undo() {
-            if (historyStep > 0) {
+            if (historyStep >= 0) {
                 historyStep--;
-                restoreState();
+                redrawCanvas();
+                updateHistoryButtons();
+                saveToSession(); // Save state after undo
             }
         }
         
         function redo() {
-            if (historyStep < history.length - 1) {
+            if (historyStep < strokes.length - 1) {
                 historyStep++;
-                restoreState();
+                redrawCanvas();
+                updateHistoryButtons();
+                saveToSession(); // Save state after redo
             }
         }
         
-        function restoreState() {
-            const img = new Image();
-            img.onload = () => {
-                ctx.clearRect(0, 0, 800, 600);
-                ctx.drawImage(img, 0, 0);
-                updateHistoryButtons();
-            };
-            img.src = history[historyStep];
+        function redrawCanvas() {
+            // Clear and redraw from strokes
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, 800, 600);
+            
+            // Build set of currently deleted stroke IDs by processing erase actions
+            const deletedIds = new Set();
+            for (let i = 0; i <= historyStep; i++) {
+                const action = strokes[i];
+                if (action && action.type === 'erase') {
+                    // This erase action is active, mark its strokes as deleted
+                    action.deletedIds.forEach(id => deletedIds.add(id));
+                }
+            }
+            
+            // Draw all strokes up to historyStep (skip deleted ones)
+            for (let i = 0; i <= historyStep; i++) {
+                const stroke = strokes[i];
+                if (!stroke || stroke.type === 'erase') continue; // Skip erase actions
+                if (deletedIds.has(stroke.id)) continue; // Skip deleted strokes
+                drawStroke(stroke);
+            }
+        }
+        
+        function drawStroke(stroke) {
+            if (!stroke || !stroke.points || stroke.points.length === 0) return;
+            
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Handle single-point strokes (dots)
+            if (stroke.points.length === 1) {
+                const point = stroke.points[0];
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, stroke.size / 2, 0, Math.PI * 2);
+                ctx.fillStyle = stroke.color;
+                ctx.fill();
+                return;
+            }
+            
+            // Handle multi-point strokes (lines)
+            ctx.strokeStyle = stroke.color;
+            ctx.lineWidth = stroke.size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+            
+            for (let i = 1; i < stroke.points.length; i++) {
+                const prev = stroke.points[i - 1];
+                const curr = stroke.points[i];
+                const midX = (prev.x + curr.x) / 2;
+                const midY = (prev.y + curr.y) / 2;
+                ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+            }
+            
+            ctx.stroke();
         }
         
         function clearCanvas() {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, 800, 600);
-            saveState();
+            // Clear all strokes
+            if (historyStep < strokes.length - 1) {
+                strokes.length = historyStep + 1;
+            }
+            historyStep = strokes.length;
+            redrawCanvas();
+            updateHistoryButtons();
+            saveToSession(); // Save after clear
+            
+            // Notify teacher
+            channel?.send({
+                type: 'broadcast',
+                event: 'student_clear',
+                payload: { username }
+            });
         }
         
         undoBtn.addEventListener('click', undo);
         redoBtn.addEventListener('click', redo);
         clearBtn.addEventListener('click', clearCanvas);
         
-        window.login = async function() {
+        // Initialize canvas
+        redrawCanvas();
+        updateHistoryButtons();
+        
+        // Login handler
+        async function login() {
             username = usernameInput.value.trim();
             sessionCode = sessionInput.value.trim().toUpperCase();
             
@@ -449,8 +556,22 @@
             loginForm.style.display = 'none';
             appContainer.style.display = 'flex';
             
+            // Load any saved work from session storage
+            loadFromSession();
+            
             await setupSupabase();
-        };
+        }
+        
+        // Attach login to button
+        loginBtn.addEventListener('click', login);
+        
+        // Allow Enter key to submit
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+        sessionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
         
         async function setupSupabase() {
             status.textContent = 'Connecting to Supabase...';
@@ -468,44 +589,47 @@
                 config: { broadcast: { ack: false } }
             });
             
-            // Listen for teacher annotations
-            channel.on('broadcast', { event: 'teacher_draw' }, ({ payload }) => {
-                console.log('📥 Received teacher_draw:', payload);
+            // Listen for teacher stroke events
+            channel.on('broadcast', { event: 'teacher_stroke_end' }, ({ payload }) => {
+                if (payload.target !== username) return;
                 
-                if (payload.target !== username) {
-                    console.log('⚠️ Not for me. Target:', payload.target, 'My name:', username);
-                    return;
+                console.log('📥 Received teacher stroke:', payload);
+                const teacherStroke = {
+                    id: payload.stroke.id,
+                    color: payload.stroke.color,
+                    size: payload.stroke.size,
+                    points: payload.stroke.points,
+                    isTeacher: true
+                };
+                
+                // Add to strokes array
+                addStroke(teacherStroke);
+            });
+            
+            // Listen for teacher stroke deletions
+            channel.on('broadcast', { event: 'teacher_stroke_delete' }, ({ payload }) => {
+                if (payload.target !== username) return;
+                
+                console.log('🗑️ Teacher deleted stroke:', payload.strokeId);
+                const index = strokes.findIndex(s => s.id === payload.strokeId);
+                if (index >= 0) {
+                    strokes.splice(index, 1);
+                    historyStep = strokes.length - 1;
+                    redrawCanvas();
+                    updateHistoryButtons();
                 }
+            });
+            
+            // Listen for teacher clear
+            channel.on('broadcast', { event: 'teacher_clear' }, ({ payload }) => {
+                if (payload.target !== username) return;
                 
-                const { type, x, y, color, tool, size } = payload;
-                console.log('✅ Drawing teacher annotation:', { type, x, y, color, tool, size });
-                
-                // Save current drawing state
-                ctx.save();
-                
-                if (type === 'start') {
-                    // Set up drawing style based on teacher's toolbar settings
-                    if (tool === 'eraser') {
-                        ctx.globalCompositeOperation = 'destination-out';
-                        ctx.strokeStyle = 'rgba(0,0,0,1)';
-                    } else {
-                        ctx.globalCompositeOperation = 'source-over';
-                        ctx.strokeStyle = color || '#dc2626'; // Default to red
-                    }
-                    ctx.lineWidth = size || 4;
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-                    ctx.beginPath();
-                    ctx.moveTo(x, y);
-                    console.log('🎨 Started annotation at:', x, y, 'color:', color, 'size:', size);
-                } else if (type === 'move') {
-                    ctx.lineTo(x, y);
-                    ctx.stroke();
-                    console.log('🎨 Drawing annotation to:', x, y);
-                } else if (type === 'end') {
-                    console.log('🎨 Finished annotation');
-                    ctx.restore();
-                }
+                console.log('🧹 Teacher cleared annotations');
+                // Remove all teacher strokes
+                strokes = strokes.filter(s => !s.isTeacher);
+                historyStep = strokes.length - 1;
+                redrawCanvas();
+                updateHistoryButtons();
             });
             
             channel.subscribe(async (channelStatus) => {
@@ -531,58 +655,80 @@
         // Drawing with toolbar support
         let lastPoint = null;
         
+        // Eraser state
+        let erasedStrokes = []; // Track strokes deleted in current eraser drag
+        let isErasing = false;
+        
         canvas.addEventListener('pointerdown', (e) => {
             // Stylus mode: only allow pen input
             if (stylusOnly && e.pointerType !== 'pen') return;
             
-            isDrawing = true;
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX - rect.left) * (800 / rect.width);
             const y = (e.clientY - rect.top) * (600 / rect.height);
             
-            lastPoint = { x, y };
-            
-            // Set drawing style based on tool
             if (currentTool === 'eraser') {
-                ctx.globalCompositeOperation = 'destination-out';
-                ctx.strokeStyle = 'rgba(0,0,0,1)';
+                // Start erasing - track deleted strokes
+                isErasing = true;
+                erasedStrokes = [];
+                lastPoint = { x, y };
+                deleteStrokesInPath(x, y);
             } else {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.strokeStyle = currentColor;
-            }
-            ctx.lineWidth = brushSize;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            
-            channel?.send({
-                type: 'broadcast',
-                event: 'student_draw',
-                payload: { 
-                    username, 
-                    type: 'start', 
-                    x, 
-                    y,
+                // Pen: start new stroke
+                isDrawing = true;
+                lastPoint = { x, y };
+                currentStroke = {
+                    id: Date.now() + '-' + Math.random(),
                     color: currentColor,
-                    tool: currentTool,
-                    size: brushSize
-                }
-            });
+                    size: brushSize,
+                    points: [{ x, y }],
+                    isTeacher: false
+                };
+                
+                // Draw preview
+                ctx.strokeStyle = currentColor;
+                ctx.lineWidth = brushSize;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                
+                // Notify teacher
+                channel?.send({
+                    type: 'broadcast',
+                    event: 'student_stroke_start',
+                    payload: { 
+                        username,
+                        stroke: {
+                            id: currentStroke.id,
+                            color: currentColor,
+                            size: brushSize
+                        }
+                    }
+                });
+            }
         });
         
         canvas.addEventListener('pointermove', (e) => {
-            if (!isDrawing) return;
-            
             const rect = canvas.getBoundingClientRect();
             const x = (e.clientX - rect.left) * (800 / rect.width);
             const y = (e.clientY - rect.top) * (600 / rect.height);
             
-            // Smooth line interpolation
+            if (isErasing) {
+                // Eraser: delete strokes along path
+                deleteStrokesInPath(x, y);
+                lastPoint = { x, y };
+                return;
+            }
+            
+            if (!isDrawing || !currentStroke) return;
+            
+            currentStroke.points.push({ x, y });
+            
+            // Draw preview
             if (lastPoint) {
                 const midX = (lastPoint.x + x) / 2;
                 const midY = (lastPoint.y + y) / 2;
-                
                 ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, midX, midY);
                 ctx.stroke();
                 ctx.beginPath();
@@ -591,33 +737,172 @@
             
             lastPoint = { x, y };
             
+            // Send point to teacher
             channel?.send({
                 type: 'broadcast',
-                event: 'student_draw',
-                payload: { username, type: 'move', x, y }
+                event: 'student_stroke_point',
+                payload: { username, strokeId: currentStroke.id, x, y }
             });
         });
         
         canvas.addEventListener('pointerup', () => {
-            if (!isDrawing) return;
+            if (isErasing) {
+                // Finish erasing - add as one undo action
+                isErasing = false;
+                lastPoint = null;
+                
+                if (erasedStrokes.length > 0) {
+                    console.log('✅ Erased', erasedStrokes.length, 'strokes');
+                    
+                    // Create an "erase action" object to track what was deleted
+                    const eraseAction = {
+                        id: Date.now() + '-erase-' + Math.random(),
+                        type: 'erase',
+                        deletedStrokes: [...erasedStrokes], // Copy of deleted strokes
+                        deletedIds: erasedStrokes.map(s => s.id)
+                    };
+                    
+                    // Add erase action to history
+                    addStroke(eraseAction);
+                }
+                return;
+            }
+            
+            if (!isDrawing || !currentStroke) return;
+            
+            // Handle single-point strokes (dots)
+            if (currentStroke.points.length === 1) {
+                // Draw a dot
+                const point = currentStroke.points[0];
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, brushSize / 2, 0, Math.PI * 2);
+                ctx.fillStyle = currentColor;
+                ctx.fill();
+            }
+            
             isDrawing = false;
             lastPoint = null;
-            ctx.globalCompositeOperation = 'source-over';
-            saveState();
             
+            // Add completed stroke (even if just one point)
+            addStroke(currentStroke);
+            
+            // Send complete stroke to teacher
             channel?.send({
                 type: 'broadcast',
-                event: 'student_draw',
-                payload: { username, type: 'end' }
+                event: 'student_stroke_end',
+                payload: { 
+                    username,
+                    stroke: {
+                        id: currentStroke.id,
+                        color: currentStroke.color,
+                        size: currentStroke.size,
+                        points: currentStroke.points
+                    }
+                }
             });
+            
+            currentStroke = null;
         });
         
         canvas.addEventListener('pointerleave', () => {
+            if (isErasing) {
+                isErasing = false;
+                lastPoint = null;
+                if (erasedStrokes.length > 0) {
+                    updateHistoryButtons();
+                }
+                return;
+            }
+            
             if (!isDrawing) return;
             isDrawing = false;
             lastPoint = null;
-            ctx.globalCompositeOperation = 'source-over';
+            currentStroke = null;
         });
+        
+        // Eraser: delete strokes along drag path
+        function deleteStrokesInPath(x, y) {
+            const eraserRadius = Math.max(30, brushSize * 3); // Larger, smoother eraser (min 30px)
+            const deletedThisFrame = new Set();
+            
+            // Build set of currently deleted IDs (from active erase actions)
+            const currentlyDeletedIds = new Set();
+            for (let i = 0; i <= historyStep; i++) {
+                const action = strokes[i];
+                if (action && action.type === 'erase') {
+                    action.deletedIds.forEach(id => currentlyDeletedIds.add(id));
+                }
+            }
+            
+            // Find all strokes that intersect with eraser position
+            for (let i = historyStep; i >= 0; i--) {
+                const stroke = strokes[i];
+                if (!stroke || stroke.isTeacher || stroke.type === 'erase') continue; // Can't delete teacher annotations or erase actions
+                if (currentlyDeletedIds.has(stroke.id)) continue; // Already deleted by an erase action
+                if (erasedStrokes.find(e => e.id === stroke.id)) continue; // Already deleted in this drag
+                
+                // Check if any point in the stroke is within eraser radius
+                // Also check line segments for better detection
+                let shouldDelete = false;
+                
+                for (let j = 0; j < stroke.points.length; j++) {
+                    const point = stroke.points[j];
+                    const dist = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
+                    
+                    // Direct point hit
+                    if (dist < eraserRadius + (stroke.size || 3) / 2) {
+                        shouldDelete = true;
+                        break;
+                    }
+                    
+                    // Check line segment if not first point
+                    if (j > 0) {
+                        const prevPoint = stroke.points[j - 1];
+                        const lineDistSq = distToSegmentSquared(x, y, prevPoint.x, prevPoint.y, point.x, point.y);
+                        if (lineDistSq < (eraserRadius + (stroke.size || 3) / 2) ** 2) {
+                            shouldDelete = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (shouldDelete) {
+                    // Track for this erase action
+                    deletedThisFrame.add(stroke.id);
+                    erasedStrokes.push(stroke);
+                    
+                    // Notify teacher
+                    channel?.send({
+                        type: 'broadcast',
+                        event: 'student_stroke_delete',
+                        payload: { username, strokeId: stroke.id }
+                    });
+                }
+            }
+            
+            // Redraw if anything was deleted
+            if (deletedThisFrame.size > 0) {
+                redrawCanvas();
+            }
+        }
+        
+        // Helper: distance from point to line segment (squared)
+        function distToSegmentSquared(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const lengthSq = dx * dx + dy * dy;
+            
+            if (lengthSq === 0) return (px - x1) ** 2 + (py - y1) ** 2;
+            
+            let t = ((px - x1) * dx + (py - y1) * dy) / lengthSq;
+            t = Math.max(0, Math.min(1, t));
+            
+            const projX = x1 + t * dx;
+            const projY = y1 + t * dy;
+            
+            return (px - projX) ** 2 + (py - projY) ** 2;
+        }
     </script>
 </body>
 </html>
+
