@@ -1,1354 +1,1296 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher - Minimal</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teacher • Live Drawing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ['"Plus Jakarta Sans"', "ui-sans-serif", "system-ui"],
+            },
+            colors: {
+              brand: {
+                500: "#6366f1",
+                600: "#4f46e5",
+                700: "#4338ca",
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-            min-height: 100vh;
-            color: white;
-            padding: 32px 24px;
-        }
-        .header {
-            background: rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(10px);
-            padding: 32px;
-            border-radius: 24px;
-            margin-bottom: 32px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        h1 {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 24px;
-            letter-spacing: -0.5px;
-        }
-        .controls {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .header input {
-            padding: 14px 18px;
-            font-size: 16px;
-            border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 12px;
-            background: rgba(255,255,255,0.95);
-            min-width: 200px;
-            font-weight: 500;
-        }
-        .header input:focus {
-            outline: none;
-            border-color: #60a5fa;
-        }
-        .header button {
-            padding: 14px 28px;
-            background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .header button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 32px rgba(37, 99, 235, 0.4);
-        }
-        #sessionInfo {
-            margin-top: 20px;
-            padding: 20px;
-            background: rgba(16, 185, 129, 0.15);
-            border-radius: 12px;
-            display: none;
-            border: 2px solid rgba(16, 185, 129, 0.3);
-        }
-        #sessionInfo.active { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
-        #sessionInfo strong { color: rgba(255,255,255,0.95); }
-        #status {
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        #status.connecting { background: rgba(251, 146, 60, 0.9); }
-        #status.connected { background: rgba(34, 197, 94, 0.9); }
-        #status.error { background: rgba(239, 68, 68, 0.9); }
-        #students {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 24px;
-            margin-top: 32px;
-        }
-        .student-card {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-        .student-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 24px 72px rgba(0,0,0,0.4);
-        }
-        .student-card h3 {
-            color: #1e293b;
-            margin-bottom: 16px;
-            font-size: 18px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .student-card h3::before {
-            content: '👨‍🎓';
-            font-size: 20px;
-        }
-        .student-card canvas {
-            width: 100%;
-            height: auto;
-            border: 3px solid #e5e7eb;
-            border-radius: 12px;
-            display: block;
-            margin-bottom: 16px;
-            background: white;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .student-card button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 15px;
-            transition: all 0.3s;
-        }
-        .student-card button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4);
-        }
-        
-        /* Modal */
-        #modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.95);
-            backdrop-filter: blur(20px);
-            z-index: 1000;
-            padding: 32px;
-            animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        #modal.open { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #modalHeader {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            max-width: 1400px;
-            margin-bottom: 24px;
-            gap: 16px;
-        }
-        .modal-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-        }
-        #modalHeader h2 {
-            font-size: 24px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        #modalHeader h2::before {
-            content: '✏️';
-            font-size: 28px;
-        }
-        #closeModal {
-            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.3s;
-        }
-        #closeModal:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4);
-        }
-        #canvasWrapper {
-            position: relative;
-            background: white;
-            border-radius: 20px;
-            padding: 32px;
-            box-shadow: 0 40px 120px rgba(0,0,0,0.7);
-        }
-        #bigCanvas {
-            display: block;
-            max-width: 90vw;
-            max-height: 70vh;
-            border: 4px solid #e5e7eb;
-            border-radius: 16px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-        }
-        #overlay {
-            position: absolute;
-            top: 32px;
-            left: 32px;
-            pointer-events: auto;
-            cursor: crosshair;
-            border-radius: 12px;
-        }
-        
-        /* Toolbar */
-        .toolbar {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 12px 20px;
-            border-radius: 100px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .toolbar-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 8px;
-        }
-        .toolbar-divider {
-            width: 1px;
-            height: 32px;
-            background: #e5e7eb;
-        }
-        .color-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 3px solid transparent;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-        .color-btn:hover {
-            transform: scale(1.1);
-        }
-        .color-btn.active {
-            border-color: #1e293b;
-            box-shadow: 0 0 0 2px white, 0 0 0 4px #1e293b;
-        }
-        .tool-btn {
-            padding: 8px 16px;
-            border: 2px solid #e5e7eb;
-            background: white;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.2s;
-            color: #64748b;
-        }
-        .tool-btn:hover {
-            border-color: #cbd5e1;
-            background: #f8fafc;
-        }
-        .tool-btn.active {
-            background: #1e293b;
-            color: white;
-            border-color: #1e293b;
-        }
-        .size-control {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .size-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border: 2px solid #e5e7eb;
-            background: white;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 14px;
-            color: #64748b;
-            transition: all 0.2s;
-        }
-        .size-btn:hover {
-            background: #f8fafc;
-            border-color: #cbd5e1;
-        }
-        #brushSize {
-            width: 80px;
-            height: 6px;
-            border-radius: 3px;
-            outline: none;
-            cursor: pointer;
-        }
-        .action-btn {
-            padding: 8px 12px;
-            border: none;
-            background: #f1f5f9;
-            border-radius: 16px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 13px;
-            color: #475569;
-            transition: all 0.2s;
-        }
-        .action-btn:hover {
-            background: #e2e8f0;
-        }
-        .action-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        .action-btn.clear {
-            color: #dc2626;
-        }
-        .action-btn.clear:hover {
-            background: #fee2e2;
-        }
-        .stylus-indicator {
-            padding: 8px 16px;
-            background: #dbeafe;
-            color: #1e40af;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .stylus-indicator:hover {
-            background: #bfdbfe;
-        }
-        .stylus-indicator.off {
-            background: #f1f5f9;
-            color: #64748b;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 80px 40px;
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(10px);
-            border-radius: 24px;
-            border: 2px dashed rgba(255,255,255,0.2);
-            margin-top: 32px;
-        }
-        .empty-state p {
-            color: rgba(255,255,255,0.7);
-            font-size: 18px;
-            margin-bottom: 8px;
-        }
-        .empty-state small {
-            color: rgba(255,255,255,0.5);
-            font-size: 14px;
-        }
-        #studentCount {
-            background: rgba(16, 185, 129, 0.9);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 16px;
-        }
+      body {
+        font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui;
+      }
+      #modal {
+        display: none;
+      }
+      #modal.open {
+        display: flex;
+      }
+      .color-btn {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 9999px;
+        border: 3px solid transparent;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      .color-btn:hover {
+        transform: scale(1.08);
+      }
+      .color-btn.active {
+        box-shadow:
+          0 0 0 3px rgba(255, 255, 255, 0.85),
+          0 0 0 6px rgba(30, 41, 59, 0.85);
+      }
+      .tool-btn,
+      .action-btn {
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      .tool-btn:hover,
+      .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.15);
+      }
+      .tool-btn.active {
+        background: linear-gradient(135deg, #4f46e5, #4338ca);
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 10px 25px rgba(79, 70, 229, 0.35);
+      }
+      .action-btn:disabled,
+      .tool-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+      }
+      .feedback-toast {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+        transition:
+          opacity 0.25s ease,
+          transform 0.25s ease;
+        pointer-events: none;
+      }
+      .feedback-toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+      #overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: auto;
+        cursor: crosshair;
+      }
     </style>
-</head>
-<body>
-    <div class="header">
-        <h1>📊 Teacher Dashboard</h1>
-        <div class="controls">
-            <input type="text" id="sessionInput" placeholder="Session code" maxlength="10" value="TEST123">
-            <button id="startSessionBtn">Start Session</button>
-            <span id="status" class="connecting">Not connected</span>
-        </div>
-        <div id="sessionInfo">
-            <div>
-                <strong>Session:</strong> <span id="sessionCode"></span>
-            </div>
-            <div>
-                <strong>Students Online:</strong> <span id="studentCount">0</span>
-            </div>
-        </div>
-    </div>
-    
-    <div id="students"></div>
-    <div class="empty-state" id="emptyState">
-        <p>👥 Waiting for students...</p>
-        <small>Share the session code TEST123 with your students</small>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <div class="absolute inset-0 -z-10 overflow-hidden">
+      <div
+        class="absolute -top-48 -right-32 h-[32rem] w-[32rem] rounded-full bg-gradient-to-br from-brand-600/50 to-sky-500/40 blur-3xl"
+      ></div>
+      <div
+        class="absolute -bottom-52 -left-24 h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-violet-600/40 to-indigo-500/40 blur-3xl"
+      ></div>
+      <div
+        class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_60%)]"
+      ></div>
     </div>
 
-    <!-- Modal for annotation -->
-    <div id="modal">
-        <div id="modalHeader">
-            <div class="modal-top">
-                <h2 id="modalTitle">Annotating Student</h2>
-                <button id="closeModal">Close</button>
+    <main
+      class="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-10 px-6 py-10"
+    >
+      <header
+        class="rounded-3xl border border-white/10 bg-white/10 p-1 shadow-2xl shadow-brand-700/20 backdrop-blur-xl"
+      >
+        <div
+          class="flex flex-col gap-6 rounded-[2.8rem] border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-900/60 p-8 md:flex-row md:items-center md:justify-between"
+        >
+          <div class="space-y-4">
+            <div class="flex items-center gap-3">
+              <span
+                class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-2xl"
+                >📊</span
+              >
+              <div>
+                <h1 class="text-3xl font-semibold tracking-tight text-white">
+                  Teacher Control Room
+                </h1>
+                <p class="text-sm text-slate-300">
+                  Launch a session, monitor every canvas, and annotate live.
+                </p>
+              </div>
             </div>
-            
-            <!-- Teacher Toolbar -->
-            <div class="toolbar">
-                <!-- Colors -->
-                <div class="toolbar-group">
-                    <div class="color-btn active" style="background: #dc2626;" data-color="#dc2626" title="Red"></div>
-                    <div class="color-btn" style="background: #9333ea;" data-color="#9333ea" title="Purple"></div>
-                    <div class="color-btn" style="background: #14b8a6;" data-color="#14b8a6" title="Teal"></div>
-                </div>
-                
-                <div class="toolbar-divider"></div>
-                
-                <!-- Pen/Eraser -->
-                <div class="toolbar-group">
-                    <button class="tool-btn active" data-tool="pen">Pen</button>
-                    <button class="tool-btn" data-tool="eraser">Eraser</button>
-                </div>
-                
-                <div class="toolbar-divider"></div>
-                
-                <!-- Brush Size -->
-                <div class="toolbar-group size-control">
-                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">Size</span>
-                    <input type="range" id="brushSize" min="1" max="20" value="4" />
-                    <span id="sizeDisplay" style="font-size: 12px; color: #1e293b; font-weight: 700; min-width: 20px;">4</span>
-                </div>
-                
-                <div class="toolbar-divider"></div>
-                
-                <!-- Actions -->
-                <div class="toolbar-group">
-                    <button class="action-btn" id="undoBtn" disabled>Undo</button>
-                    <button class="action-btn" id="redoBtn" disabled>Redo</button>
-                    <button class="action-btn clear" id="clearBtn">Clear</button>
-                </div>
-                
-                <div class="toolbar-divider"></div>
-                
-                <!-- Stylus Mode -->
-                <div class="stylus-indicator" id="stylusToggle">
-                    Stylus mode (pen only)
-                </div>
+            <div
+              class="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 md:flex-row md:items-center md:gap-4"
+            >
+              <div
+                class="flex flex-col gap-2 md:flex-row md:items-center md:gap-3"
+              >
+                <label
+                  for="sessionInput"
+                  class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+                  >Session code</label
+                >
+                <input
+                  id="sessionInput"
+                  type="text"
+                  maxlength="10"
+                  value="TEST123"
+                  class="w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-base font-semibold uppercase tracking-[0.2em] text-slate-900 shadow focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/30 md:w-40"
+                  aria-label="Session code"
+                />
+              </div>
+              <button
+                id="startSessionBtn"
+                class="inline-flex items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-700/30 transition hover:translate-y-[-1px] hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/40"
+              >
+                Start session
+              </button>
+              <span
+                id="status"
+                class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold tracking-tight text-white/90 ring-1 ring-white/30"
+                aria-live="polite"
+                >Not connected</span
+              >
             </div>
+            <div
+              id="sessionInfo"
+              class="hidden w-full flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200"
+            >
+              <div class="flex items-center gap-3">
+                <span
+                  class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80"
+                  >Active session</span
+                >
+                <span class="text-lg font-semibold text-white" id="sessionCode"
+                  >—</span
+                >
+              </div>
+              <div class="flex items-center gap-3 text-sm font-medium">
+                <span
+                  class="rounded-full bg-emerald-400/10 px-3 py-1 text-emerald-100"
+                  >Students online</span
+                >
+                <span id="studentCount" class="text-lg font-semibold text-white"
+                  >0</span
+                >
+              </div>
+            </div>
+          </div>
+          <div class="hidden h-full w-px bg-white/10 md:block"></div>
+          <div
+            class="flex-1 space-y-4 rounded-3xl border border-white/10 bg-white/5 p-6"
+          >
+            <h2 class="text-base font-semibold tracking-tight text-white">
+              Live toolkit
+            </h2>
+            <ul class="space-y-3 text-sm text-slate-300">
+              <li class="flex items-start gap-3">
+                <span
+                  class="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600/30 text-xs font-semibold text-white"
+                  >1</span
+                >
+                Open any student canvas to mark up and provide voice-over
+                feedback.
+              </li>
+              <li class="flex items-start gap-3">
+                <span
+                  class="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600/30 text-xs font-semibold text-white"
+                  >2</span
+                >
+                Undo, redo, and erase actions mirror instantly back to the
+                student.
+              </li>
+              <li class="flex items-start gap-3">
+                <span
+                  class="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600/30 text-xs font-semibold text-white"
+                  >3</span
+                >
+                Hold
+                <kbd
+                  class="rounded bg-white/20 px-2 py-1 text-[0.7rem] font-semibold uppercase"
+                  >⌘</kbd
+                >
+                +
+                <kbd
+                  class="rounded bg-white/20 px-2 py-1 text-[0.7rem] font-semibold uppercase"
+                  >Z</kbd
+                >
+                for undo, add
+                <kbd
+                  class="rounded bg-white/20 px-2 py-1 text-[0.7rem] font-semibold uppercase"
+                  >⇧</kbd
+                >
+                for redo.
+              </li>
+            </ul>
+          </div>
         </div>
-        <div id="canvasWrapper">
-            <canvas id="bigCanvas" width="800" height="600"></canvas>
-            <canvas id="overlay" width="800" height="600"></canvas>
+      </header>
+
+      <section class="space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-white">Student canvases</h2>
         </div>
+        <div
+          id="students"
+          class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3"
+        ></div>
+        <div
+          id="emptyState"
+          class="flex flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-white/20 bg-white/5 p-16 text-center text-slate-300"
+        >
+          <span class="text-3xl">👋</span>
+          <p class="text-lg font-semibold text-white">
+            Waiting for students to join
+          </p>
+          <p class="max-w-sm text-sm text-slate-300">
+            Share the session code
+            <span class="font-semibold text-white">TEST123</span> so students
+            can connect instantly.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <div
+      id="feedbackToast"
+      class="feedback-toast fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-white/90 px-5 py-2 text-sm font-semibold text-slate-900 shadow-xl shadow-slate-900/20"
+    >
+      Action completed
+    </div>
+
+    <div
+      id="modal"
+      class="modal fixed inset-0 z-40 hidden flex-col items-center justify-center bg-slate-950/85 px-6 py-10 backdrop-blur-xl"
+    >
+      <div class="flex w-full max-w-6xl flex-col gap-6">
+        <div
+          class="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-xl shadow-brand-700/20 backdrop-blur"
+        >
+          <div
+            class="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between"
+          >
+            <div class="flex items-center gap-3 text-left">
+              <span
+                class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-2xl"
+                >✏️</span
+              >
+              <div>
+                <h2 id="modalTitle" class="text-2xl font-semibold text-white">
+                  Annotating Student
+                </h2>
+                <p class="text-sm text-slate-300">
+                  Use undo
+                  <kbd
+                    class="rounded bg-white/20 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase"
+                    >⌘</kbd
+                  ><kbd
+                    class="rounded bg-white/20 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase"
+                    >Z</kbd
+                  >
+                  and redo shortcuts to work even faster.
+                </p>
+              </div>
+            </div>
+            <button
+              id="closeModal"
+              class="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/40"
+            >
+              Close
+            </button>
+          </div>
+
+          <div
+            class="toolbar flex flex-wrap items-center justify-center gap-3 rounded-full border border-white/10 bg-white/80 px-6 py-3 shadow-lg shadow-slate-900/10"
+          >
+            <div
+              class="flex items-center gap-2"
+              role="group"
+              aria-label="Annotation color"
+            >
+              <button
+                class="color-btn"
+                style="background: #dc2626"
+                data-color="#dc2626"
+                title="Red"
+              ></button>
+              <button
+                class="color-btn"
+                style="background: #9333ea"
+                data-color="#9333ea"
+                title="Purple"
+              ></button>
+              <button
+                class="color-btn"
+                style="background: #14b8a6"
+                data-color="#14b8a6"
+                title="Teal"
+              ></button>
+            </div>
+            <span class="hidden h-8 w-px bg-slate-200 lg:block"></span>
+            <div
+              class="flex items-center gap-2"
+              role="group"
+              aria-label="Annotation tool"
+            >
+              <button
+                class="tool-btn rounded-full border border-slate-200/80 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+                data-tool="pen"
+              >
+                Pen
+              </button>
+              <button
+                class="tool-btn rounded-full border border-slate-200/80 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+                data-tool="eraser"
+              >
+                Eraser
+              </button>
+            </div>
+            <span class="hidden h-8 w-px bg-slate-200 lg:block"></span>
+            <div class="flex items-center gap-3" aria-label="Brush size">
+              <span
+                class="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >Size</span
+              >
+              <input
+                type="range"
+                id="brushSize"
+                min="1"
+                max="24"
+                value="4"
+                class="h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-slate-200"
+              />
+              <span
+                id="sizeDisplay"
+                class="text-sm font-semibold text-slate-700"
+                >4</span
+              >
+            </div>
+            <span class="hidden h-8 w-px bg-slate-200 lg:block"></span>
+            <div
+              class="flex items-center gap-2"
+              aria-label="Annotation actions"
+            >
+              <button
+                class="action-btn rounded-full border border-slate-200/80 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
+                id="undoBtn"
+                title="Undo (⌘/Ctrl + Z)"
+                disabled
+              >
+                Undo
+              </button>
+              <button
+                class="action-btn rounded-full border border-slate-200/80 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
+                id="redoBtn"
+                title="Redo (⇧ + ⌘/Ctrl + Z)"
+                disabled
+              >
+                Redo
+              </button>
+              <button
+                class="action-btn rounded-full border border-rose-200 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-600"
+                id="clearBtn"
+                title="Clear annotations"
+              >
+                Clear
+              </button>
+            </div>
+            <span class="hidden h-8 w-px bg-slate-200 lg:block"></span>
+            <button
+              class="stylus-indicator rounded-full border border-slate-200/80 bg-blue-100/80 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-blue-800"
+              id="stylusToggle"
+            >
+              Stylus mode (pen only)
+            </button>
+          </div>
+        </div>
+        <div
+          class="relative overflow-hidden rounded-3xl border border-white/10 bg-white p-4 shadow-2xl shadow-slate-900/40"
+        >
+          <div
+            class="relative mx-auto max-w-full overflow-hidden rounded-2xl border border-slate-200 shadow-inner"
+          >
+            <canvas
+              id="bigCanvas"
+              width="800"
+              height="600"
+              class="block h-auto max-h-[70vh] w-full rounded-2xl bg-white"
+            ></canvas>
+            <canvas
+              id="overlay"
+              width="800"
+              height="600"
+              class="block h-auto max-h-[70vh] w-full rounded-2xl"
+            ></canvas>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
-        // Supabase configuration - safe for client-side use
-        window.SUPABASE_URL = "https://eytswszeopdxmtxxbkrb.supabase.co";
-        window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhia3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
+      window.SUPABASE_URL = "https://eytswszeopdxmtxxbkrb.supabase.co";
+      window.SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhpY3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
     </script>
     <script type="module">
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm';
-        
-        const studentsDiv = document.getElementById('students');
-        const emptyState = document.getElementById('emptyState');
-        const modal = document.getElementById('modal');
-        const bigCanvas = document.getElementById('bigCanvas');
-        const bigCtx = bigCanvas.getContext('2d');
-        const overlay = document.getElementById('overlay');
-        const overlayCtx = overlay.getContext('2d');
-        const modalTitle = document.getElementById('modalTitle');
-        const closeModal = document.getElementById('closeModal');
-        const status = document.getElementById('status');
-        const sessionInfo = document.getElementById('sessionInfo');
-        const sessionCodeDisplay = document.getElementById('sessionCode');
-        const studentCount = document.getElementById('studentCount');
-        const sessionInput = document.getElementById('sessionInput');
-        
-        let supabase, channel;
-        let sessionCode;
-        let students = new Map();
-        let currentStudent = null;
-        let isAnnotating = false;
-        
-        // Auto-start session with TEST123
-        window.addEventListener('DOMContentLoaded', () => {
-            sessionInput.value = 'TEST123';
-            setTimeout(startSession, 100);
-        });
-        
-        async function startSession() {
-            sessionCode = sessionInput.value.trim().toUpperCase();
-            if (!sessionCode) {
-                alert('Please enter a session code');
-                return;
-            }
-            
-            sessionInput.disabled = true;
-            startSessionBtn.disabled = true;
-            await setupSupabase();
-        }
-        
-        // Attach event listener to start button
-        const startSessionBtn = document.getElementById('startSessionBtn');
-        startSessionBtn.addEventListener('click', startSession);
-        
-        // Allow Enter key to submit
-        sessionInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') startSession();
-        });
-        
-        async function setupSupabase() {
-            status.textContent = 'Connecting...';
-            status.className = 'connecting';
-            
-            if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
-                status.textContent = 'ERROR: Supabase keys missing';
-                status.className = 'error';
-                console.error('Missing Supabase configuration. Make sure server is running!');
-                return;
-            }
-            
-            console.log('🔗 Connecting to Supabase...');
-            supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-            
-            channel = supabase.channel(`minimal-${sessionCode}`, {
-                config: { broadcast: { ack: false } }
-            });
-            
-            // Listen for student ready
-            channel.on('broadcast', { event: 'student_ready' }, ({ payload }) => {
-                console.log('👤 Student joined:', payload.username);
-                addStudent(payload.username);
-            });
-            
-            // Listen for student drawing
-            // Listen for student stroke events
-            channel.on('broadcast', { event: 'student_stroke_end' }, ({ payload }) => {
-                console.log('📥 Student stroke received:', payload);
-                const student = students.get(payload.username);
-                if (student) {
-                    const stroke = {
-                        id: payload.stroke.id,
-                        color: payload.stroke.color,
-                        size: payload.stroke.size,
-                        points: payload.stroke.points,
-                        isTeacher: false
-                    };
-                    student.strokes.push(stroke);
-                    redrawStudentCanvas(student);
-                }
-            });
-            
-            channel.on('broadcast', { event: 'student_state_change' }, ({ payload }) => {
-                console.log('📥 Student state change received:', payload);
-                const student = students.get(payload.username);
-                if (student) {
-                    // Add newly visible strokes
-                    payload.added.forEach(strokeData => {
-                        if (!student.strokes.find(s => s.id === strokeData.id)) {
-                            const stroke = {
-                                id: strokeData.id,
-                                color: strokeData.color,
-                                size: strokeData.size,
-                                points: strokeData.points,
-                                isTeacher: false
-                            };
-                            student.strokes.push(stroke);
-                        }
-                    });
-                    
-                    // Remove hidden strokes
-                    payload.removed.forEach(id => {
-                        const index = student.strokes.findIndex(s => s.id === id);
-                        if (index >= 0) {
-                            student.strokes.splice(index, 1);
-                        }
-                    });
-                    
-                    redrawStudentCanvas(student);
-                }
-            });
-            
-            channel.on('broadcast', { event: 'student_stroke_delete' }, ({ payload }) => {
-                console.log('🗑️ Student deleted stroke:', payload);
-                const student = students.get(payload.username);
-                if (student) {
-                    student.strokes = student.strokes.filter(s => s.id !== payload.strokeId);
-                    redrawStudentCanvas(student);
-                }
-            });
-            
-            channel.on('broadcast', { event: 'student_clear' }, ({ payload }) => {
-                console.log('🧹 Student cleared canvas:', payload);
-                const student = students.get(payload.username);
-                if (student) {
-                    student.strokes = student.strokes.filter(s => s.isTeacher);
-                    redrawStudentCanvas(student);
-                }
-            });
-            
-            channel.subscribe((channelStatus) => {
-                if (channelStatus === 'SUBSCRIBED') {
-                    status.textContent = 'Connected';
-                    status.className = 'connected';
-                    sessionInfo.classList.add('active');
-                    sessionCodeDisplay.textContent = sessionCode;
-                    console.log('✅ Session started:', sessionCode);
-                } else if (channelStatus === 'CHANNEL_ERROR') {
-                    status.textContent = 'Connection error';
-                    status.className = 'error';
-                    console.error('❌ Channel error');
-                }
-            });
-        }
-        
-        function addStudent(username) {
-            if (students.has(username)) return;
-            
-            emptyState.style.display = 'none';
-            
-            // Create canvas for this student
-            const canvas = document.createElement('canvas');
-            canvas.width = 800;
-            canvas.height = 600;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, 800, 600);
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            
-            // Store student data with stroke-based system
-            students.set(username, {
-                username,  // Store username for reference
-                canvas, 
-                ctx,
-                strokes: [],  // All strokes (student + teacher)
-                teacherAnnotations: [],  // Store teacher's annotations
-                currentAnnotation: null  // Current annotation being drawn
-            });
-            
-            // Create UI card
-            const card = document.createElement('div');
-            card.className = 'student-card';
-            card.innerHTML = `
-                <h3>${username}</h3>
-                <canvas width="800" height="600"></canvas>
-                <button onclick="annotate('${username}')">View & Annotate</button>
-            `;
-            studentsDiv.appendChild(card);
-            
-            studentCount.textContent = students.size;
-        }
-        
-        function redrawStudentCanvas(student) {
-            if (!student) return;
-            
-            // Clear canvas
-            student.ctx.fillStyle = 'white';
-            student.ctx.fillRect(0, 0, 800, 600);
-            
-            // Draw all strokes
-            student.strokes.forEach(stroke => {
-                if (!stroke || !stroke.points || stroke.points.length === 0) return;
-                
-                student.ctx.globalCompositeOperation = 'source-over';
-                
-                // Handle single-point strokes (dots)
-                if (stroke.points.length === 1) {
-                    const point = stroke.points[0];
-                    student.ctx.beginPath();
-                    student.ctx.arc(point.x, point.y, stroke.size / 2, 0, Math.PI * 2);
-                    student.ctx.fillStyle = stroke.color;
-                    student.ctx.fill();
-                    return;
-                }
-                
-                // Handle multi-point strokes (lines)
-                student.ctx.strokeStyle = stroke.color;
-                student.ctx.lineWidth = stroke.size;
-                student.ctx.lineCap = 'round';
-                student.ctx.lineJoin = 'round';
-                
-                student.ctx.beginPath();
-                student.ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-                
-                for (let i = 1; i < stroke.points.length; i++) {
-                    const prev = stroke.points[i - 1];
-                    const curr = stroke.points[i];
-                    const midX = (prev.x + curr.x) / 2;
-                    const midY = (prev.y + curr.y) / 2;
-                    student.ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
-                }
-                
-                student.ctx.stroke();
-            });
-            
-            // Update preview card
-            const card = Array.from(studentsDiv.children).find(c => 
-                c.querySelector('h3').textContent === student.username
-            );
-            if (card) {
-                const previewCanvas = card.querySelector('canvas');
-                const previewCtx = previewCanvas.getContext('2d');
-                previewCtx.clearRect(0, 0, 800, 600);
-                previewCtx.drawImage(student.canvas, 0, 0);
-            }
-            
-            // Update big canvas if this student is open
-            if (currentStudent === student.username && modal.classList.contains('open')) {
-                bigCtx.clearRect(0, 0, 800, 600);
-                bigCtx.drawImage(student.canvas, 0, 0);
-            }
-        }
-        
-        window.annotate = function(username) {
-            currentStudent = username;
-            const student = students.get(username);
-            if (!student) return;
-            
-            console.log('🎯 Opening annotation modal for:', username);
-            
-            // Copy student canvas to big canvas
-            bigCtx.clearRect(0, 0, 800, 600);
-            bigCtx.fillStyle = 'white';
-            bigCtx.fillRect(0, 0, 800, 600);
-            bigCtx.drawImage(student.canvas, 0, 0);
-            
-            // Clear overlay and redraw stored annotations
-            overlayCtx.clearRect(0, 0, 800, 600);
-            redrawStoredAnnotations(student);
-            
-            modalTitle.textContent = `Annotating ${username}`;
-            modal.classList.add('open');
-            
-            // Initialize annotation history
-            annotationHistory = [];
-            annotationHistoryStep = -1;
-            saveAnnotationState();
-            
-            // Update overlay size AFTER modal is visible
-            setTimeout(() => {
-                updateOverlaySize();
-                console.log('✅ Overlay sized. Stored annotations:', student.teacherAnnotations.length);
-            }, 100);
-        };
-        
-        function redrawStoredAnnotations(student) {
-            if (!student.teacherAnnotations || student.teacherAnnotations.length === 0) return;
-            
-            // Build set of deleted annotation IDs by processing erase actions
-            const deletedIds = new Set();
-            student.teacherAnnotations.forEach(action => {
-                if (action && action.type === 'erase') {
-                    action.deletedIds.forEach(id => deletedIds.add(id));
-                }
-            });
-            
-            // ALSO include annotations being erased in current drag (real-time feedback)
-            if (isErasingAnnotation && erasedAnnotations.length > 0) {
-                erasedAnnotations.forEach(annotation => deletedIds.add(annotation.id));
-            }
-            
-            console.log('🎨 Redrawing', student.teacherAnnotations.length, 'stored annotations (', deletedIds.size, 'deleted)');
-            
-            student.teacherAnnotations.forEach(annotation => {
-                if (!annotation || annotation.type === 'erase') return; // Skip erase actions
-                if (deletedIds.has(annotation.id)) return; // Skip deleted annotations
-                if (!annotation.points || annotation.points.length === 0) return;
-                
-                overlayCtx.globalCompositeOperation = 'source-over';
-                
-                // Handle single-point annotations (dots)
-                if (annotation.points.length === 1) {
-                    const point = annotation.points[0];
-                    overlayCtx.beginPath();
-                    overlayCtx.arc(point.x, point.y, (annotation.size || 4) / 2, 0, Math.PI * 2);
-                    overlayCtx.fillStyle = annotation.color || '#dc2626';
-                    overlayCtx.fill();
-                    return;
-                }
-                
-                // Handle multi-point annotations (lines)
-                overlayCtx.strokeStyle = annotation.color || '#dc2626';
-                overlayCtx.lineWidth = annotation.size || 4;
-                overlayCtx.lineCap = 'round';
-                overlayCtx.lineJoin = 'round';
-                
-                overlayCtx.beginPath();
-                overlayCtx.moveTo(annotation.points[0].x, annotation.points[0].y);
-                
-                for (let i = 1; i < annotation.points.length; i++) {
-                    const prev = annotation.points[i - 1];
-                    const curr = annotation.points[i];
-                    const midX = (prev.x + curr.x) / 2;
-                    const midY = (prev.y + curr.y) / 2;
-                    overlayCtx.quadraticCurveTo(prev.x, prev.y, midX, midY);
-                }
-                
-                overlayCtx.stroke();
-            });
-            
-            overlayCtx.globalCompositeOperation = 'source-over';
-        }
-        
-        function updateOverlaySize() {
-            const rect = bigCanvas.getBoundingClientRect();
-            console.log('📐 Updating overlay size:', rect);
-            overlay.style.width = rect.width + 'px';
-            overlay.style.height = rect.height + 'px';
-            
-            // Ensure overlay canvas is clickable
-            if (rect.width === 0 || rect.height === 0) {
-                console.warn('⚠️ Canvas has no size!');
-            }
-        }
-        
-        closeModal.onclick = () => {
-            modal.classList.remove('open');
-            currentStudent = null;
-        };
-        
-        // Teacher toolbar controls
-        let currentColor = '#dc2626'; // Red
-        let currentTool = 'pen';
-        let brushSize = 4;
-        let stylusOnly = true;
-        let annotationHistory = [];
-        let annotationHistoryStep = -1;
-        
-        const colorBtns = document.querySelectorAll('.color-btn');
-        const toolBtns = document.querySelectorAll('.tool-btn');
-        const brushSizeInput = document.getElementById('brushSize');
-        const sizeDisplay = document.getElementById('sizeDisplay');
-        const undoBtn = document.getElementById('undoBtn');
-        const redoBtn = document.getElementById('redoBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const stylusToggle = document.getElementById('stylusToggle');
-        
-        // Color selection
-        colorBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                colorBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentColor = btn.dataset.color;
-                if (currentTool === 'eraser') {
-                    currentTool = 'pen';
-                    updateToolButtons();
-                }
-            });
-        });
-        
-        // Tool selection
-        toolBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                currentTool = btn.dataset.tool;
-                updateToolButtons();
-            });
-        });
-        
-        function updateToolButtons() {
-            toolBtns.forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.tool === currentTool);
-            });
-        }
-        
-        // Brush size
-        brushSizeInput.addEventListener('input', (e) => {
-            brushSize = parseInt(e.target.value);
-            sizeDisplay.textContent = brushSize;
-        });
-        
-        // Stylus mode toggle
-        stylusToggle.addEventListener('click', () => {
-            stylusOnly = !stylusOnly;
-            stylusToggle.classList.toggle('off', !stylusOnly);
-            stylusToggle.textContent = stylusOnly ? 'Stylus mode (pen only)' : 'All inputs';
-        });
-        
-        // Annotation history management
-        function saveAnnotationState() {
-            annotationHistoryStep++;
-            if (annotationHistoryStep < annotationHistory.length) {
-                annotationHistory.length = annotationHistoryStep;
-            }
-            annotationHistory.push(overlay.toDataURL());
-            updateAnnotationHistoryButtons();
-        }
-        
-        function updateAnnotationHistoryButtons() {
-            undoBtn.disabled = annotationHistoryStep <= 0;
-            redoBtn.disabled = annotationHistoryStep >= annotationHistory.length - 1;
-        }
-        
-        // Get IDs of currently visible annotations
-        function getVisibleAnnotationIds(student) {
-            if (!student || !student.teacherAnnotations) return new Set();
-            
-            const deletedIds = new Set();
-            const visibleIds = new Set();
-            
-            student.teacherAnnotations.forEach(item => {
-                if (item.type === 'erase') {
-                    item.deletedIds.forEach(id => deletedIds.add(id));
-                } else if (item.points) {
-                    visibleIds.add(item.id);
-                }
-            });
-            
-            // Remove deleted from visible
-            deletedIds.forEach(id => visibleIds.delete(id));
-            
-            return visibleIds;
-        }
-        
-        // Compute what changed between two visible sets
-        function computeAnnotationDiff(oldVisibleIds, newVisibleIds, student) {
-            const added = [];
-            const removed = [];
-            
-            // Find newly visible annotations
-            newVisibleIds.forEach(id => {
-                if (!oldVisibleIds.has(id)) {
-                    const annotation = student.teacherAnnotations.find(a => a.id === id);
-                    if (annotation && annotation.points) {
-                        added.push({
-                            id: annotation.id,
-                            color: annotation.color,
-                            size: annotation.size,
-                            points: annotation.points
-                        });
-                    }
-                }
-            });
-            
-            // Find newly hidden annotations
-            oldVisibleIds.forEach(id => {
-                if (!newVisibleIds.has(id)) {
-                    removed.push(id);
-                }
-            });
-            
-            return { added, removed };
-        }
-        
-        function undoAnnotation() {
-            if (annotationHistoryStep > 0) {
-                const student = students.get(currentStudent);
-                const oldVisible = getVisibleAnnotationIds(student);
-                
-                annotationHistoryStep--;
-                restoreAnnotationState();
-                
-                // Compute and broadcast changes after state is restored
-                setTimeout(() => {
-                    const newVisible = getVisibleAnnotationIds(student);
-                    const diff = computeAnnotationDiff(oldVisible, newVisible, student);
-                    
-                    if ((diff.added.length > 0 || diff.removed.length > 0) && student) {
-                        console.log('📤 Broadcasting teacher undo state change:', diff);
-                        channel.send({
-                            type: 'broadcast',
-                            event: 'teacher_state_change',
-                            payload: {
-                                target: student.username,
-                                added: diff.added,
-                                removed: diff.removed
-                            }
-                        });
-                    }
-                }, 50); // Small delay for canvas restore
-            }
-        }
-        
-        function redoAnnotation() {
-            if (annotationHistoryStep < annotationHistory.length - 1) {
-                const student = students.get(currentStudent);
-                const oldVisible = getVisibleAnnotationIds(student);
-                
-                annotationHistoryStep++;
-                restoreAnnotationState();
-                
-                // Compute and broadcast changes after state is restored
-                setTimeout(() => {
-                    const newVisible = getVisibleAnnotationIds(student);
-                    const diff = computeAnnotationDiff(oldVisible, newVisible, student);
-                    
-                    if ((diff.added.length > 0 || diff.removed.length > 0) && student) {
-                        console.log('📤 Broadcasting teacher redo state change:', diff);
-                        channel.send({
-                            type: 'broadcast',
-                            event: 'teacher_state_change',
-                            payload: {
-                                target: student.username,
-                                added: diff.added,
-                                removed: diff.removed
-                            }
-                        });
-                    }
-                }, 50); // Small delay for canvas restore
-            }
-        }
-        
-        function restoreAnnotationState() {
-            const img = new Image();
-            img.onload = () => {
-                // Reset composite operation and clear
-                overlayCtx.globalCompositeOperation = 'source-over';
-                overlayCtx.clearRect(0, 0, 800, 600);
-                // Overlay doesn't need white background (transparent)
-                // Draw saved state
-                overlayCtx.drawImage(img, 0, 0);
-                updateAnnotationHistoryButtons();
-            };
-            img.src = annotationHistory[annotationHistoryStep];
-        }
-        
-        function clearAnnotations() {
-            overlayCtx.clearRect(0, 0, 800, 600);
-            const student = students.get(currentStudent);
-            if (student) {
-                student.teacherAnnotations = [];
-                updateStudentPreview(currentStudent);
-            }
-            annotationHistory = [];
-            annotationHistoryStep = -1;
-            saveAnnotationState();
-        }
-        
-        undoBtn.addEventListener('click', undoAnnotation);
-        redoBtn.addEventListener('click', redoAnnotation);
-        clearBtn.addEventListener('click', clearAnnotations);
-        
-        // Eraser: delete annotations along drag path
-        function deleteAnnotationsInPath(x, y, student) {
-            const eraserRadius = Math.max(30, brushSize * 3); // Larger, smoother eraser (min 30px)
-            const deletedThisFrame = new Set();
-            
-            // Build set of currently deleted IDs (from active erase actions)
-            const currentlyDeletedIds = new Set();
-            student.teacherAnnotations.forEach(action => {
-                if (action && action.type === 'erase') {
-                    action.deletedIds.forEach(id => currentlyDeletedIds.add(id));
-                }
-            });
-            
-            // Find all annotations that intersect with eraser position
-            for (let i = student.teacherAnnotations.length - 1; i >= 0; i--) {
-                const annotation = student.teacherAnnotations[i];
-                if (!annotation || annotation.type === 'erase') continue; // Skip erase actions
-                if (!annotation.points) continue;
-                if (currentlyDeletedIds.has(annotation.id)) continue; // Already deleted by an erase action
-                if (erasedAnnotations.find(e => e.id === annotation.id)) continue; // Already deleted in this drag
-                
-                // Check if any point in the annotation is within eraser radius
-                // Also check line segments for better detection
-                let shouldDelete = false;
-                
-                for (let j = 0; j < annotation.points.length; j++) {
-                    const point = annotation.points[j];
-                    const dist = Math.sqrt((point.x - x) ** 2 + (point.y - y) ** 2);
-                    
-                    // Direct point hit
-                    if (dist < eraserRadius + (annotation.size || 4) / 2) {
-                        shouldDelete = true;
-                        break;
-                    }
-                    
-                    // Check line segment if not first point
-                    if (j > 0) {
-                        const prevPoint = annotation.points[j - 1];
-                        const lineDistSq = distToSegmentSquared(x, y, prevPoint.x, prevPoint.y, point.x, point.y);
-                        if (lineDistSq < (eraserRadius + (annotation.size || 4) / 2) ** 2) {
-                            shouldDelete = true;
-                            break;
-                        }
-                    }
-                }
-                
-                if (shouldDelete) {
-                    console.log('🗑️ Teacher deleting annotation:', annotation.id);
-                    
-                    // Track for this erase action
-                    deletedThisFrame.add(annotation.id);
-                    erasedAnnotations.push(annotation);
-                    
-                    // Notify student
-                    channel.send({
-                        type: 'broadcast',
-                        event: 'teacher_stroke_delete',
-                        payload: { target: student.username, strokeId: annotation.id }
-                    });
-                }
-            }
-            
-            // Redraw if anything was deleted - FORCE CLEAR AND REDRAW
-            if (deletedThisFrame.size > 0) {
-                console.log('✅ Deleted', deletedThisFrame.size, 'annotations. Redrawing overlay...');
-                
-                // Clear overlay completely
-                overlayCtx.clearRect(0, 0, 800, 600);
-                
-                // Redraw remaining annotations
-                redrawStoredAnnotations(student);
-                
-                // Update preview card
-                updateStudentPreview(student.username);
-            }
-        }
-        
-        // Helper: distance from point to line segment (squared)
-        function distToSegmentSquared(px, py, x1, y1, x2, y2) {
-            const dx = x2 - x1;
-            const dy = y2 - y1;
-            const lengthSq = dx * dx + dy * dy;
-            
-            if (lengthSq === 0) return (px - x1) ** 2 + (py - y1) ** 2;
-            
-            let t = ((px - x1) * dx + (py - y1) * dy) / lengthSq;
-            t = Math.max(0, Math.min(1, t));
-            
-            const projX = x1 + t * dx;
-            const projY = y1 + t * dy;
-            
-            return (px - projX) ** 2 + (py - projY) ** 2;
-        }
-        
-        // Overlay drawing with toolbar support
-        let lastTeacherPoint = null;
-        let erasedAnnotations = []; // Track annotations deleted in current eraser drag
-        let isErasingAnnotation = false;
-        
-        overlay.addEventListener('pointerdown', (e) => {
-            const student = students.get(currentStudent);
-            if (!student) return;
-            
-            // Stylus mode: only allow pen input
-            if (stylusOnly && e.pointerType !== 'pen') return;
-            
-            const rect = overlay.getBoundingClientRect();
-            const x = (e.clientX - rect.left) * (800 / rect.width);
-            const y = (e.clientY - rect.top) * (600 / rect.height);
-            
-            if (currentTool === 'eraser') {
-                // Start erasing annotations - track deleted annotations
-                isErasingAnnotation = true;
-                erasedAnnotations = [];
-                lastTeacherPoint = { x, y };
-                deleteAnnotationsInPath(x, y, student);
-            } else {
-                // Pen: start new annotation stroke
-                isAnnotating = true;
-                lastTeacherPoint = { x, y };
-                
-                console.log('🎨 Teacher annotation START:', { x, y, target: currentStudent, color: currentColor, size: brushSize });
-                
-                student.currentAnnotation = { 
-                    id: Date.now() + '-' + Math.random(),
-                    points: [{ x, y }],
-                    color: currentColor,
-                    size: brushSize,
-                    isTeacher: true
-                };
-                
-                // Draw preview
-                overlayCtx.globalCompositeOperation = 'source-over';
-                overlayCtx.strokeStyle = currentColor;
-                overlayCtx.lineWidth = brushSize;
-                overlayCtx.lineCap = 'round';
-                overlayCtx.lineJoin = 'round';
-                overlayCtx.beginPath();
-                overlayCtx.moveTo(x, y);
-            }
-        });
-        
-        overlay.addEventListener('pointermove', (e) => {
-            const student = students.get(currentStudent);
-            if (!student) return;
-            
-            const rect = overlay.getBoundingClientRect();
-            const x = (e.clientX - rect.left) * (800 / rect.width);
-            const y = (e.clientY - rect.top) * (600 / rect.height);
-            
-            if (isErasingAnnotation) {
-                // Eraser: delete annotations along path
-                deleteAnnotationsInPath(x, y, student);
-                lastTeacherPoint = { x, y };
-                return;
-            }
-            
-            if (!isAnnotating || !student.currentAnnotation) return;
-            
-            // Smooth line interpolation
-            if (lastTeacherPoint) {
-                const midX = (lastTeacherPoint.x + x) / 2;
-                const midY = (lastTeacherPoint.y + y) / 2;
-                
-                overlayCtx.quadraticCurveTo(lastTeacherPoint.x, lastTeacherPoint.y, midX, midY);
-                overlayCtx.stroke();
-                overlayCtx.beginPath();
-                overlayCtx.moveTo(midX, midY);
-            }
-            
-            lastTeacherPoint = { x, y };
-            
-            // Store point in current annotation
-            student.currentAnnotation.points.push({ x, y });
-        });
-        
-        overlay.addEventListener('pointerup', stopAnnotating);
-        overlay.addEventListener('pointerleave', stopAnnotating);
-        
-        function stopAnnotating() {
-            const student = students.get(currentStudent);
-            
-            if (isErasingAnnotation) {
-                // Finish erasing annotations
-                isErasingAnnotation = false;
-                lastTeacherPoint = null;
-                
-                if (erasedAnnotations.length > 0 && student) {
-                    console.log('✅ Erased', erasedAnnotations.length, 'annotations');
-                    
-                    // Create an "erase action" object to track what was deleted
-                    const eraseAction = {
-                        id: Date.now() + '-erase-' + Math.random(),
-                        type: 'erase',
-                        deletedAnnotations: [...erasedAnnotations], // Copy of deleted annotations
-                        deletedIds: erasedAnnotations.map(a => a.id)
-                    };
-                    
-                    // Add erase action to teacherAnnotations
-                    student.teacherAnnotations.push(eraseAction);
-                    
-                    // Redraw to ensure consistency
-                    overlayCtx.clearRect(0, 0, 800, 600);
-                    redrawStoredAnnotations(student);
-                    updateStudentPreview(student.username);
-                    
-                    // Save state for undo/redo
-                    saveAnnotationState();
-                }
-                return;
-            }
-            
-            if (!isAnnotating) return;
-            
-            if (student && student.currentAnnotation && student.currentAnnotation.points.length > 0) {
-                // Handle single-point annotations (dots)
-                if (student.currentAnnotation.points.length === 1) {
-                    const point = student.currentAnnotation.points[0];
-                    overlayCtx.beginPath();
-                    overlayCtx.arc(point.x, point.y, brushSize / 2, 0, Math.PI * 2);
-                    overlayCtx.fillStyle = currentColor;
-                    overlayCtx.fill();
-                }
-                
-                // Save completed annotation
-                const annotation = student.currentAnnotation;
-                student.teacherAnnotations.push(annotation);
-                
-                // Add to student's strokes array too
-                student.strokes.push(annotation);
-                
-                console.log('💾 Saved annotation. Total:', student.teacherAnnotations.length);
-                
-                // Update preview card with annotations
-                updateStudentPreview(currentStudent);
-                
-                // Save state for undo/redo
-                saveAnnotationState();
-                
-                // Send complete stroke to student
-                channel.send({
-                    type: 'broadcast',
-                    event: 'teacher_stroke_end',
-                    payload: { 
-                        target: currentStudent,
-                        stroke: {
-                            id: annotation.id,
-                            color: annotation.color,
-                            size: annotation.size,
-                            points: annotation.points
-                        }
-                    }
-                });
-                
-                student.currentAnnotation = null;
-            }
-            
-            isAnnotating = false;
-            lastTeacherPoint = null;
-            overlayCtx.globalCompositeOperation = 'source-over';
-        }
-        
-        function updateStudentPreview(username) {
-            const student = students.get(username);
-            if (!student) return;
-            
-            const card = Array.from(studentsDiv.children).find(c => 
-                c.querySelector('h3').textContent === username
-            );
-            if (!card) return;
-            
-            const previewCanvas = card.querySelector('canvas');
-            const previewCtx = previewCanvas.getContext('2d');
-            
-            // Draw student work
-            previewCtx.drawImage(student.canvas, 0, 0);
-            
-            // Draw teacher annotations on preview
-            if (student.teacherAnnotations.length > 0) {
-                previewCtx.strokeStyle = 'red';
-                previewCtx.lineWidth = 4;
-                previewCtx.lineCap = 'round';
-                previewCtx.lineJoin = 'round';
-                
-                student.teacherAnnotations.forEach(annotation => {
-                    if (!annotation.points || annotation.points.length === 0) return;
-                    
-                    previewCtx.beginPath();
-                    previewCtx.moveTo(annotation.points[0].x, annotation.points[0].y);
-                    
-                    for (let i = 1; i < annotation.points.length; i++) {
-                        previewCtx.lineTo(annotation.points[i].x, annotation.points[i].y);
-                    }
-                    
-                    previewCtx.stroke();
-                });
-            }
-        }
-        
-        // Resize handler
-        window.addEventListener('resize', () => {
-            if (modal.classList.contains('open')) {
-                updateOverlaySize();
-            }
-        });
-    </script>
-</body>
-</html>
+      import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm";
 
+      const studentsDiv = document.getElementById("students");
+      const emptyState = document.getElementById("emptyState");
+      const modal = document.getElementById("modal");
+      const bigCanvas = document.getElementById("bigCanvas");
+      const bigCtx = bigCanvas.getContext("2d");
+      const overlay = document.getElementById("overlay");
+      const overlayCtx = overlay.getContext("2d");
+      const modalTitle = document.getElementById("modalTitle");
+      const closeModal = document.getElementById("closeModal");
+      const status = document.getElementById("status");
+      const sessionInfo = document.getElementById("sessionInfo");
+      const sessionCodeDisplay = document.getElementById("sessionCode");
+      const studentCount = document.getElementById("studentCount");
+      const sessionInput = document.getElementById("sessionInput");
+      const feedbackToast = document.getElementById("feedbackToast");
+
+      const statusStyles = {
+        idle: "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold tracking-tight text-white/90 ring-1 ring-white/20 bg-white/5",
+        connecting:
+          "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold tracking-tight text-amber-100 ring-1 ring-amber-200/60 bg-amber-500/20",
+        connected:
+          "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold tracking-tight text-emerald-100 ring-1 ring-emerald-200/60 bg-emerald-500/20",
+        error:
+          "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold tracking-tight text-rose-100 ring-1 ring-rose-200/60 bg-rose-500/20",
+      };
+
+      let supabase, channel;
+      let sessionCode;
+      let students = new Map();
+      let currentStudent = null;
+      let isAnnotating = false;
+      let isErasingAnnotation = false;
+      let deletedAnnotationIds = new Set();
+
+      let annotationHistory = [];
+      let annotationHistoryStep = -1;
+
+      const colorBtns = document.querySelectorAll(".color-btn");
+      const toolBtns = document.querySelectorAll(".tool-btn");
+      const brushSizeInput = document.getElementById("brushSize");
+      const sizeDisplay = document.getElementById("sizeDisplay");
+      const undoBtn = document.getElementById("undoBtn");
+      const redoBtn = document.getElementById("redoBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const stylusToggle = document.getElementById("stylusToggle");
+      const startSessionBtn = document.getElementById("startSessionBtn");
+
+      let currentColor = "#dc2626";
+      let currentTool = "pen";
+      let brushSize = 4;
+      let stylusOnly = true;
+      let lastTeacherPoint = null;
+
+      function updateStatus(state, label) {
+        status.textContent = label;
+        status.className = statusStyles[state] || statusStyles.idle;
+      }
+
+      function showFeedback(message) {
+        if (!feedbackToast) return;
+        feedbackToast.textContent = message;
+        feedbackToast.classList.add("show");
+        clearTimeout(showFeedback._timeout);
+        showFeedback._timeout = setTimeout(() => {
+          feedbackToast.classList.remove("show");
+        }, 1600);
+      }
+
+      function cloneAnnotations(annotations = []) {
+        return annotations.map((annotation) => ({
+          ...annotation,
+          points: annotation.points
+            ? annotation.points.map((point) => ({ ...point }))
+            : [],
+        }));
+      }
+
+      function syncHistoryToStudent(student) {
+        student.annotationHistory = annotationHistory.map(cloneAnnotations);
+        student.annotationHistoryStep = annotationHistoryStep;
+      }
+
+      function loadAnnotationHistory(student) {
+        annotationHistory = student.annotationHistory
+          ? student.annotationHistory.map(cloneAnnotations)
+          : [];
+        annotationHistoryStep =
+          typeof student.annotationHistoryStep === "number"
+            ? student.annotationHistoryStep
+            : -1;
+
+        if (annotationHistory.length === 0) {
+          annotationHistory.push(cloneAnnotations(student.teacherAnnotations));
+          annotationHistoryStep = annotationHistory.length - 1;
+        } else if (
+          annotationHistoryStep < 0 ||
+          annotationHistoryStep >= annotationHistory.length
+        ) {
+          annotationHistoryStep = annotationHistory.length - 1;
+        }
+
+        restoreAnnotationState();
+      }
+
+      function saveAnnotationState(student) {
+        if (!student) return;
+        if (annotationHistoryStep < annotationHistory.length - 1) {
+          annotationHistory = annotationHistory.slice(
+            0,
+            annotationHistoryStep + 1,
+          );
+        }
+
+        annotationHistory.push(cloneAnnotations(student.teacherAnnotations));
+        annotationHistoryStep = annotationHistory.length - 1;
+        syncHistoryToStudent(student);
+        updateAnnotationHistoryButtons();
+      }
+
+      function restoreAnnotationState() {
+        const student = students.get(currentStudent);
+        if (!student) return;
+        const snapshot = annotationHistory[annotationHistoryStep] || [];
+        student.teacherAnnotations = cloneAnnotations(snapshot);
+
+        overlayCtx.clearRect(0, 0, 800, 600);
+        redrawStoredAnnotations(student);
+        updateStudentPreview(student.username);
+        syncHistoryToStudent(student);
+        updateAnnotationHistoryButtons();
+      }
+
+      function updateAnnotationHistoryButtons() {
+        undoBtn.disabled = annotationHistoryStep <= 0;
+        redoBtn.disabled =
+          annotationHistoryStep >= annotationHistory.length - 1;
+      }
+
+      function getVisibleAnnotationIds(student) {
+        if (!student) return new Set();
+        return new Set(
+          student.teacherAnnotations.map((annotation) => annotation.id),
+        );
+      }
+
+      function computeAnnotationDiff(oldVisibleIds, newVisibleIds, student) {
+        const added = [];
+        const removed = [];
+
+        newVisibleIds.forEach((id) => {
+          if (!oldVisibleIds.has(id)) {
+            const annotation = student.teacherAnnotations.find(
+              (a) => a.id === id,
+            );
+            if (annotation) {
+              added.push({
+                id: annotation.id,
+                color: annotation.color,
+                size: annotation.size,
+                points: annotation.points,
+              });
+            }
+          }
+        });
+
+        oldVisibleIds.forEach((id) => {
+          if (!newVisibleIds.has(id)) {
+            removed.push(id);
+          }
+        });
+
+        return { added, removed };
+      }
+
+      updateStatus("idle", "Not connected");
+
+      window.addEventListener("DOMContentLoaded", () => {
+        sessionInput.value = "TEST123";
+        setTimeout(startSession, 100);
+      });
+
+      async function startSession() {
+        sessionCode = sessionInput.value.trim().toUpperCase();
+        if (!sessionCode) {
+          alert("Please enter a session code");
+          return;
+        }
+
+        sessionInput.disabled = true;
+        startSessionBtn.disabled = true;
+        updateStatus("connecting", "Connecting…");
+        await setupSupabase();
+      }
+
+      startSessionBtn.addEventListener("click", startSession);
+      sessionInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") startSession();
+      });
+
+      async function setupSupabase() {
+        if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+          updateStatus("error", "Missing Supabase keys");
+          console.error("Missing Supabase configuration.");
+          return;
+        }
+
+        supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+        channel = supabase.channel(`minimal-${sessionCode}`, {
+          config: { broadcast: { ack: false } },
+        });
+
+        channel.on("broadcast", { event: "student_ready" }, ({ payload }) => {
+          addStudent(payload.username);
+          showFeedback(`${payload.username} joined the session`);
+        });
+
+        channel.on(
+          "broadcast",
+          { event: "student_stroke_end" },
+          ({ payload }) => {
+            const student = students.get(payload.username);
+            if (student) {
+              const stroke = {
+                id: payload.stroke.id,
+                color: payload.stroke.color,
+                size: payload.stroke.size,
+                points: payload.stroke.points,
+                isTeacher: false,
+              };
+              student.strokes.push(stroke);
+              redrawStudentCanvas(student);
+              updateStudentPreview(student.username);
+            }
+          },
+        );
+
+        channel.on(
+          "broadcast",
+          { event: "student_state_change" },
+          ({ payload }) => {
+            const student = students.get(payload.username);
+            if (student) {
+              payload.added.forEach((strokeData) => {
+                if (!student.strokes.find((s) => s.id === strokeData.id)) {
+                  const stroke = {
+                    id: strokeData.id,
+                    color: strokeData.color,
+                    size: strokeData.size,
+                    points: strokeData.points,
+                    isTeacher: false,
+                  };
+                  student.strokes.push(stroke);
+                }
+              });
+
+              payload.removed.forEach((id) => {
+                const index = student.strokes.findIndex((s) => s.id === id);
+                if (index >= 0) {
+                  student.strokes.splice(index, 1);
+                }
+              });
+
+              redrawStudentCanvas(student);
+              updateStudentPreview(student.username);
+            }
+          },
+        );
+
+        channel.on(
+          "broadcast",
+          { event: "student_stroke_delete" },
+          ({ payload }) => {
+            const student = students.get(payload.username);
+            if (student) {
+              student.strokes = student.strokes.filter(
+                (s) => s.id !== payload.strokeId,
+              );
+              redrawStudentCanvas(student);
+              updateStudentPreview(student.username);
+            }
+          },
+        );
+
+        channel.on("broadcast", { event: "student_clear" }, ({ payload }) => {
+          const student = students.get(payload.username);
+          if (student) {
+            student.strokes = [];
+            redrawStudentCanvas(student);
+            updateStudentPreview(student.username);
+          }
+        });
+
+        channel.subscribe((channelStatus) => {
+          if (channelStatus === "SUBSCRIBED") {
+            updateStatus("connected", "Connected");
+            sessionInfo.classList.remove("hidden");
+            sessionCodeDisplay.textContent = sessionCode;
+            showFeedback("Session connected");
+          } else if (channelStatus === "CHANNEL_ERROR") {
+            updateStatus("error", "Connection error");
+            console.error("Channel error");
+          }
+        });
+      }
+
+      function addStudent(username) {
+        if (students.has(username)) return;
+
+        emptyState.classList.add("hidden");
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 800;
+        canvas.height = 600;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, 800, 600);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        students.set(username, {
+          username,
+          canvas,
+          ctx,
+          strokes: [],
+          teacherAnnotations: [],
+          currentAnnotation: null,
+          annotationHistory: [],
+          annotationHistoryStep: -1,
+        });
+
+        const card = document.createElement("div");
+        card.className =
+          "flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-xl shadow-slate-900/20 backdrop-blur";
+        card.innerHTML = `
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-xl">👩‍🎓</span>
+                        <h3 class="text-lg font-semibold text-white">${username}</h3>
+                    </div>
+                    <button data-username="${username}" class="annotate-btn inline-flex items-center gap-2 rounded-full bg-brand-600/90 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-brand-700/40 transition hover:bg-brand-600" title="Open canvas">
+                        Annotate
+                        <span aria-hidden="true">→</span>
+                    </button>
+                </div>
+                <div class="overflow-hidden rounded-2xl border border-white/10 bg-white/80 shadow-inner">
+                    <canvas width="800" height="600" class="block h-full w-full"></canvas>
+                </div>
+            `;
+
+        card
+          .querySelector(".annotate-btn")
+          .addEventListener("click", () => annotate(username));
+        const previewCtx = card.querySelector("canvas").getContext("2d");
+        previewCtx.fillStyle = "#ffffff";
+        previewCtx.fillRect(0, 0, 800, 600);
+        studentsDiv.appendChild(card);
+        studentCount.textContent = students.size;
+      }
+
+      function redrawStudentCanvas(student) {
+        if (!student) return;
+        student.ctx.fillStyle = "white";
+        student.ctx.fillRect(0, 0, 800, 600);
+
+        student.strokes.forEach((stroke) => {
+          if (!stroke?.points?.length) return;
+
+          student.ctx.strokeStyle = stroke.color;
+          student.ctx.lineWidth = stroke.size;
+          student.ctx.lineCap = "round";
+          student.ctx.lineJoin = "round";
+
+          if (stroke.points.length === 1) {
+            const point = stroke.points[0];
+            student.ctx.beginPath();
+            student.ctx.arc(point.x, point.y, stroke.size / 2, 0, Math.PI * 2);
+            student.ctx.fillStyle = stroke.color;
+            student.ctx.fill();
+            return;
+          }
+
+          student.ctx.beginPath();
+          student.ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+
+          for (let i = 1; i < stroke.points.length; i++) {
+            const prev = stroke.points[i - 1];
+            const curr = stroke.points[i];
+            const midX = (prev.x + curr.x) / 2;
+            const midY = (prev.y + curr.y) / 2;
+            student.ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+          }
+
+          student.ctx.stroke();
+        });
+      }
+
+      function updateStudentPreview(username) {
+        const student = students.get(username);
+        if (!student) return;
+
+        const card = Array.from(studentsDiv.children).find(
+          (c) => c.querySelector("h3")?.textContent === username,
+        );
+        if (!card) return;
+
+        const previewCanvas = card.querySelector("canvas");
+        const previewCtx = previewCanvas.getContext("2d");
+        previewCtx.clearRect(0, 0, 800, 600);
+        previewCtx.drawImage(student.canvas, 0, 0);
+
+        if (student.teacherAnnotations.length > 0) {
+          previewCtx.lineCap = "round";
+          previewCtx.lineJoin = "round";
+          student.teacherAnnotations.forEach((annotation) => {
+            if (!annotation.points?.length) return;
+            previewCtx.strokeStyle = annotation.color;
+            previewCtx.lineWidth = annotation.size;
+            previewCtx.beginPath();
+            previewCtx.moveTo(annotation.points[0].x, annotation.points[0].y);
+            for (let i = 1; i < annotation.points.length; i++) {
+              const prev = annotation.points[i - 1];
+              const curr = annotation.points[i];
+              const midX = (prev.x + curr.x) / 2;
+              const midY = (prev.y + curr.y) / 2;
+              previewCtx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+            }
+            previewCtx.stroke();
+          });
+        }
+      }
+
+      window.annotate = function (username) {
+        currentStudent = username;
+        const student = students.get(username);
+        if (!student) return;
+
+        bigCtx.clearRect(0, 0, 800, 600);
+        bigCtx.fillStyle = "white";
+        bigCtx.fillRect(0, 0, 800, 600);
+        bigCtx.drawImage(student.canvas, 0, 0);
+
+        overlayCtx.clearRect(0, 0, 800, 600);
+        redrawStoredAnnotations(student);
+
+        modalTitle.textContent = `Annotating ${username}`;
+        modal.classList.add("open");
+
+        loadAnnotationHistory(student);
+        updateOverlaySize();
+        updateAnnotationHistoryButtons();
+        showFeedback(`Annotating ${username}`);
+      };
+
+      closeModal.addEventListener("click", () => {
+        modal.classList.remove("open");
+        currentStudent = null;
+      });
+
+      function redrawStoredAnnotations(student) {
+        overlayCtx.globalCompositeOperation = "source-over";
+        student.teacherAnnotations.forEach((annotation) => {
+          if (!annotation.points?.length) return;
+
+          if (annotation.points.length === 1) {
+            const point = annotation.points[0];
+            overlayCtx.beginPath();
+            overlayCtx.arc(
+              point.x,
+              point.y,
+              (annotation.size || 4) / 2,
+              0,
+              Math.PI * 2,
+            );
+            overlayCtx.fillStyle = annotation.color || "#dc2626";
+            overlayCtx.fill();
+            return;
+          }
+
+          overlayCtx.strokeStyle = annotation.color || "#dc2626";
+          overlayCtx.lineWidth = annotation.size || 4;
+          overlayCtx.lineCap = "round";
+          overlayCtx.lineJoin = "round";
+
+          overlayCtx.beginPath();
+          overlayCtx.moveTo(annotation.points[0].x, annotation.points[0].y);
+
+          for (let i = 1; i < annotation.points.length; i++) {
+            const prev = annotation.points[i - 1];
+            const curr = annotation.points[i];
+            const midX = (prev.x + curr.x) / 2;
+            const midY = (prev.y + curr.y) / 2;
+            overlayCtx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+          }
+
+          overlayCtx.stroke();
+        });
+      }
+
+      function updateOverlaySize() {
+        const rect = bigCanvas.getBoundingClientRect();
+        overlay.style.width = `${rect.width}px`;
+        overlay.style.height = `${rect.height}px`;
+      }
+
+      colorBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          colorBtns.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          currentColor = btn.dataset.color;
+          if (currentTool === "eraser") {
+            currentTool = "pen";
+            updateToolButtons();
+          }
+        });
+      });
+      colorBtns[0]?.classList.add("active");
+
+      toolBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          currentTool = btn.dataset.tool;
+          updateToolButtons();
+        });
+      });
+
+      function updateToolButtons() {
+        toolBtns.forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.tool === currentTool);
+        });
+      }
+      updateToolButtons();
+
+      brushSizeInput.addEventListener("input", (e) => {
+        brushSize = parseInt(e.target.value, 10);
+        sizeDisplay.textContent = brushSize;
+      });
+
+      stylusToggle.addEventListener("click", () => {
+        stylusOnly = !stylusOnly;
+        stylusToggle.classList.toggle("bg-blue-100/80", stylusOnly);
+        stylusToggle.classList.toggle("bg-slate-200/60", !stylusOnly);
+        stylusToggle.textContent = stylusOnly
+          ? "Stylus mode (pen only)"
+          : "All inputs enabled";
+      });
+
+      function undoAnnotation() {
+        if (annotationHistoryStep > 0) {
+          const student = students.get(currentStudent);
+          if (!student) return;
+          const oldVisible = getVisibleAnnotationIds(student);
+          annotationHistoryStep--;
+          restoreAnnotationState();
+          const newVisible = getVisibleAnnotationIds(student);
+          const diff = computeAnnotationDiff(oldVisible, newVisible, student);
+          if ((diff.added.length || diff.removed.length) && channel) {
+            channel.send({
+              type: "broadcast",
+              event: "teacher_state_change",
+              payload: {
+                target: student.username,
+                added: diff.added,
+                removed: diff.removed,
+              },
+            });
+          }
+          showFeedback("Undo annotation");
+        }
+      }
+
+      function redoAnnotation() {
+        if (annotationHistoryStep < annotationHistory.length - 1) {
+          const student = students.get(currentStudent);
+          if (!student) return;
+          const oldVisible = getVisibleAnnotationIds(student);
+          annotationHistoryStep++;
+          restoreAnnotationState();
+          const newVisible = getVisibleAnnotationIds(student);
+          const diff = computeAnnotationDiff(oldVisible, newVisible, student);
+          if ((diff.added.length || diff.removed.length) && channel) {
+            channel.send({
+              type: "broadcast",
+              event: "teacher_state_change",
+              payload: {
+                target: student.username,
+                added: diff.added,
+                removed: diff.removed,
+              },
+            });
+          }
+          showFeedback("Redo annotation");
+        }
+      }
+
+      function clearAnnotations() {
+        const student = students.get(currentStudent);
+        if (!student) return;
+        if (student.teacherAnnotations.length === 0) return;
+
+        student.teacherAnnotations = [];
+        overlayCtx.clearRect(0, 0, 800, 600);
+        updateStudentPreview(student.username);
+        saveAnnotationState(student);
+        updateAnnotationHistoryButtons();
+
+        if (channel) {
+          channel.send({
+            type: "broadcast",
+            event: "teacher_clear",
+            payload: { target: student.username },
+          });
+        }
+        showFeedback("Cleared annotations");
+      }
+
+      undoBtn.addEventListener("click", undoAnnotation);
+      redoBtn.addEventListener("click", redoAnnotation);
+      clearBtn.addEventListener("click", clearAnnotations);
+
+      function handleTeacherHotkeys(event) {
+        if (!modal.classList.contains("open")) return;
+        const isMeta = event.metaKey || event.ctrlKey;
+        if (isMeta && event.key.toLowerCase() === "z") {
+          event.preventDefault();
+          if (event.shiftKey) {
+            redoAnnotation();
+          } else {
+            undoAnnotation();
+          }
+        } else if (isMeta && event.key.toLowerCase() === "y") {
+          event.preventDefault();
+          redoAnnotation();
+        } else if (event.key === "Backspace" && event.shiftKey) {
+          event.preventDefault();
+          clearAnnotations();
+        }
+      }
+
+      window.addEventListener("keydown", handleTeacherHotkeys);
+
+      overlay.addEventListener("pointerdown", (e) => {
+        const student = students.get(currentStudent);
+        if (!student) return;
+        if (stylusOnly && e.pointerType !== "pen") return;
+
+        const rect = overlay.getBoundingClientRect();
+        const x = (e.clientX - rect.left) * (800 / rect.width);
+        const y = (e.clientY - rect.top) * (600 / rect.height);
+
+        if (currentTool === "eraser") {
+          isErasingAnnotation = true;
+          deletedAnnotationIds = new Set();
+          lastTeacherPoint = { x, y };
+          deleteAnnotationsInPath(x, y, student);
+        } else {
+          isAnnotating = true;
+          lastTeacherPoint = { x, y };
+          student.currentAnnotation = {
+            id: Date.now() + "-" + Math.random(),
+            points: [{ x, y }],
+            color: currentColor,
+            size: brushSize,
+            isTeacher: true,
+          };
+
+          overlayCtx.globalCompositeOperation = "source-over";
+          overlayCtx.strokeStyle = currentColor;
+          overlayCtx.lineWidth = brushSize;
+          overlayCtx.lineCap = "round";
+          overlayCtx.lineJoin = "round";
+          overlayCtx.beginPath();
+          overlayCtx.moveTo(x, y);
+        }
+      });
+
+      overlay.addEventListener("pointermove", (e) => {
+        const student = students.get(currentStudent);
+        if (!student) return;
+
+        const rect = overlay.getBoundingClientRect();
+        const x = (e.clientX - rect.left) * (800 / rect.width);
+        const y = (e.clientY - rect.top) * (600 / rect.height);
+
+        if (isErasingAnnotation) {
+          deleteAnnotationsInPath(x, y, student);
+          lastTeacherPoint = { x, y };
+          return;
+        }
+
+        if (!isAnnotating || !student.currentAnnotation) return;
+
+        if (lastTeacherPoint) {
+          const midX = (lastTeacherPoint.x + x) / 2;
+          const midY = (lastTeacherPoint.y + y) / 2;
+          overlayCtx.quadraticCurveTo(
+            lastTeacherPoint.x,
+            lastTeacherPoint.y,
+            midX,
+            midY,
+          );
+          overlayCtx.stroke();
+          overlayCtx.beginPath();
+          overlayCtx.moveTo(midX, midY);
+        }
+
+        lastTeacherPoint = { x, y };
+        student.currentAnnotation.points.push({ x, y });
+      });
+
+      overlay.addEventListener("pointerup", stopAnnotating);
+      overlay.addEventListener("pointerleave", stopAnnotating);
+
+      function stopAnnotating() {
+        const student = students.get(currentStudent);
+        if (!student) return;
+
+        if (isErasingAnnotation) {
+          isErasingAnnotation = false;
+          lastTeacherPoint = null;
+          if (deletedAnnotationIds.size > 0) {
+            saveAnnotationState(student);
+            const diff = {
+              added: [],
+              removed: Array.from(deletedAnnotationIds),
+            };
+            if (diff.removed.length && channel) {
+              channel.send({
+                type: "broadcast",
+                event: "teacher_state_change",
+                payload: { target: student.username, ...diff },
+              });
+            }
+            showFeedback(
+              `Removed ${deletedAnnotationIds.size} annotation${deletedAnnotationIds.size > 1 ? "s" : ""}`,
+            );
+          }
+          deletedAnnotationIds.clear();
+          return;
+        }
+
+        if (!isAnnotating || !student.currentAnnotation) return;
+
+        if (student.currentAnnotation.points.length === 1) {
+          const point = student.currentAnnotation.points[0];
+          overlayCtx.beginPath();
+          overlayCtx.arc(point.x, point.y, brushSize / 2, 0, Math.PI * 2);
+          overlayCtx.fillStyle = currentColor;
+          overlayCtx.fill();
+        }
+
+        student.teacherAnnotations.push(student.currentAnnotation);
+        updateStudentPreview(student.username);
+        saveAnnotationState(student);
+
+        channel?.send({
+          type: "broadcast",
+          event: "teacher_stroke_end",
+          payload: {
+            target: student.username,
+            stroke: {
+              id: student.currentAnnotation.id,
+              color: student.currentAnnotation.color,
+              size: student.currentAnnotation.size,
+              points: student.currentAnnotation.points,
+            },
+          },
+        });
+
+        student.currentAnnotation = null;
+        isAnnotating = false;
+        lastTeacherPoint = null;
+        overlayCtx.globalCompositeOperation = "source-over";
+        showFeedback("Annotation added");
+      }
+
+      function deleteAnnotationsInPath(x, y, student) {
+        const eraserRadius = Math.max(30, brushSize * 3);
+        let changed = false;
+
+        for (let i = student.teacherAnnotations.length - 1; i >= 0; i--) {
+          const annotation = student.teacherAnnotations[i];
+          if (!annotation?.points?.length) continue;
+          if (deletedAnnotationIds.has(annotation.id)) continue;
+
+          if (
+            annotation.points.some((point, index) => {
+              const dist = Math.hypot(point.x - x, point.y - y);
+              if (dist < eraserRadius + (annotation.size || 4) / 2) return true;
+              if (index === 0) return false;
+              const prevPoint = annotation.points[index - 1];
+              return (
+                distToSegmentSquared(
+                  x,
+                  y,
+                  prevPoint.x,
+                  prevPoint.y,
+                  point.x,
+                  point.y,
+                ) <
+                (eraserRadius + (annotation.size || 4) / 2) ** 2
+              );
+            })
+          ) {
+            deletedAnnotationIds.add(annotation.id);
+            student.teacherAnnotations.splice(i, 1);
+            channel?.send({
+              type: "broadcast",
+              event: "teacher_stroke_delete",
+              payload: { target: student.username, strokeId: annotation.id },
+            });
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          overlayCtx.clearRect(0, 0, 800, 600);
+          redrawStoredAnnotations(student);
+          updateStudentPreview(student.username);
+        }
+      }
+
+      function distToSegmentSquared(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const lengthSq = dx * dx + dy * dy;
+        if (lengthSq === 0) return (px - x1) ** 2 + (py - y1) ** 2;
+        let t = ((px - x1) * dx + (py - y1) * dy) / lengthSq;
+        t = Math.max(0, Math.min(1, t));
+        const projX = x1 + t * dx;
+        const projY = y1 + t * dy;
+        return (px - projX) ** 2 + (py - projY) ** 2;
+      }
+
+      window.addEventListener("resize", () => {
+        if (modal.classList.contains("open")) {
+          updateOverlaySize();
+        }
+      });
+    </script>
+  </body>
+</html>
