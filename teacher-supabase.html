@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher - Minimal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 32px 24px;
+        }
+        .header {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+            padding: 32px;
+            border-radius: 24px;
+            margin-bottom: 32px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            letter-spacing: -0.5px;
+        }
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .header input {
+            padding: 14px 18px;
+            font-size: 16px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.95);
+            min-width: 200px;
+            font-weight: 500;
+        }
+        .header input:focus {
+            outline: none;
+            border-color: #60a5fa;
+        }
+        .header button {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .header button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(37, 99, 235, 0.4);
+        }
+        #sessionInfo {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(16, 185, 129, 0.15);
+            border-radius: 12px;
+            display: none;
+            border: 2px solid rgba(16, 185, 129, 0.3);
+        }
+        #sessionInfo.active { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        #sessionInfo strong { color: rgba(255,255,255,0.95); }
+        #status {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        #status.connecting { background: rgba(251, 146, 60, 0.9); }
+        #status.connected { background: rgba(34, 197, 94, 0.9); }
+        #status.error { background: rgba(239, 68, 68, 0.9); }
+        #students {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-top: 32px;
+        }
+        .student-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .student-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 24px 72px rgba(0,0,0,0.4);
+        }
+        .student-card h3 {
+            color: #1e293b;
+            margin-bottom: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .student-card h3::before {
+            content: '👨‍🎓';
+            font-size: 20px;
+        }
+        .student-card canvas {
+            width: 100%;
+            height: auto;
+            border: 3px solid #e5e7eb;
+            border-radius: 12px;
+            display: block;
+            margin-bottom: 16px;
+            background: white;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .student-card button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        .student-card button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4);
+        }
+        
+        /* Modal */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            padding: 32px;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        #modal.open { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #modalHeader {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1400px;
+            margin-bottom: 24px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+        }
+        #modalHeader h2 {
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        #modalHeader h2::before {
+            content: '✏️';
+            font-size: 28px;
+        }
+        #closeModal {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        #closeModal:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4);
+        }
+        #canvasWrapper {
+            position: relative;
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 40px 120px rgba(0,0,0,0.7);
+        }
+        #bigCanvas {
+            display: block;
+            max-width: 90vw;
+            max-height: 70vh;
+            border: 4px solid #e5e7eb;
+            border-radius: 16px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        #overlay {
+            position: absolute;
+            top: 32px;
+            left: 32px;
+            pointer-events: auto;
+            cursor: crosshair;
+            border-radius: 12px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 80px 40px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            border: 2px dashed rgba(255,255,255,0.2);
+            margin-top: 32px;
+        }
+        .empty-state p {
+            color: rgba(255,255,255,0.7);
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        .empty-state small {
+            color: rgba(255,255,255,0.5);
+            font-size: 14px;
+        }
+        #studentCount {
+            background: rgba(16, 185, 129, 0.9);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Teacher Dashboard</h1>
+        <div class="controls">
+            <input type="text" id="sessionInput" placeholder="Session code" maxlength="10" value="TEST123">
+            <button onclick="startSession()">Start Session</button>
+            <span id="status" class="connecting">Not connected</span>
+        </div>
+        <div id="sessionInfo">
+            <div>
+                <strong>Session:</strong> <span id="sessionCode"></span>
+            </div>
+            <div>
+                <strong>Students Online:</strong> <span id="studentCount">0</span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="students"></div>
+    <div class="empty-state" id="emptyState">
+        <p>👥 Waiting for students...</p>
+        <small>Share the session code TEST123 with your students</small>
+    </div>
+
+    <!-- Modal for annotation -->
+    <div id="modal">
+        <div id="modalHeader">
+            <h2 id="modalTitle">Annotating Student</h2>
+            <button id="closeModal">Close</button>
+        </div>
+        <div id="canvasWrapper">
+            <canvas id="bigCanvas" width="800" height="600"></canvas>
+            <canvas id="overlay" width="800" height="600"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration - safe for client-side use
+        window.SUPABASE_URL = "https://eytswszeopdxmtxxbkrb.supabase.co";
+        window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhia3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
+    </script>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm';
+        
+        const studentsDiv = document.getElementById('students');
+        const emptyState = document.getElementById('emptyState');
+        const modal = document.getElementById('modal');
+        const bigCanvas = document.getElementById('bigCanvas');
+        const bigCtx = bigCanvas.getContext('2d');
+        const overlay = document.getElementById('overlay');
+        const overlayCtx = overlay.getContext('2d');
+        const modalTitle = document.getElementById('modalTitle');
+        const closeModal = document.getElementById('closeModal');
+        const status = document.getElementById('status');
+        const sessionInfo = document.getElementById('sessionInfo');
+        const sessionCodeDisplay = document.getElementById('sessionCode');
+        const studentCount = document.getElementById('studentCount');
+        const sessionInput = document.getElementById('sessionInput');
+        
+        let supabase, channel;
+        let sessionCode;
+        let students = new Map();
+        let currentStudent = null;
+        let isAnnotating = false;
+        
+        // Auto-start session with TEST123
+        window.addEventListener('DOMContentLoaded', () => {
+            sessionInput.value = 'TEST123';
+            setTimeout(startSession, 100);
+        });
+        
+        window.startSession = async function() {
+            sessionCode = sessionInput.value.trim().toUpperCase();
+            if (!sessionCode) {
+                alert('Please enter a session code');
+                return;
+            }
+            
+            sessionInput.disabled = true;
+            await setupSupabase();
+        };
+        
+        async function setupSupabase() {
+            status.textContent = 'Connecting...';
+            status.className = 'connecting';
+            
+            if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+                status.textContent = 'ERROR: Supabase keys missing';
+                status.className = 'error';
+                console.error('Missing Supabase configuration. Make sure server is running!');
+                return;
+            }
+            
+            console.log('🔗 Connecting to Supabase...');
+            supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+            
+            channel = supabase.channel(`minimal-${sessionCode}`, {
+                config: { broadcast: { ack: false } }
+            });
+            
+            // Listen for student ready
+            channel.on('broadcast', { event: 'student_ready' }, ({ payload }) => {
+                console.log('👤 Student joined:', payload.username);
+                addStudent(payload.username);
+            });
+            
+            // Listen for student drawing
+            channel.on('broadcast', { event: 'student_draw' }, ({ payload }) => {
+                drawOnStudent(payload.username, payload);
+            });
+            
+            channel.subscribe((channelStatus) => {
+                if (channelStatus === 'SUBSCRIBED') {
+                    status.textContent = 'Connected';
+                    status.className = 'connected';
+                    sessionInfo.classList.add('active');
+                    sessionCodeDisplay.textContent = sessionCode;
+                    console.log('✅ Session started:', sessionCode);
+                } else if (channelStatus === 'CHANNEL_ERROR') {
+                    status.textContent = 'Connection error';
+                    status.className = 'error';
+                    console.error('❌ Channel error');
+                }
+            });
+        }
+        
+        function addStudent(username) {
+            if (students.has(username)) return;
+            
+            emptyState.style.display = 'none';
+            
+            // Create canvas for this student
+            const canvas = document.createElement('canvas');
+            canvas.width = 800;
+            canvas.height = 600;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, 800, 600);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Store student data with annotation storage
+            students.set(username, { 
+                canvas, 
+                ctx, 
+                isDrawing: false,
+                teacherAnnotations: [],  // Store teacher's RED annotations
+                currentAnnotation: null  // Current annotation being drawn
+            });
+            
+            // Create UI card
+            const card = document.createElement('div');
+            card.className = 'student-card';
+            card.innerHTML = `
+                <h3>${username}</h3>
+                <canvas width="800" height="600"></canvas>
+                <button onclick="annotate('${username}')">Annotate in RED</button>
+            `;
+            studentsDiv.appendChild(card);
+            
+            studentCount.textContent = students.size;
+        }
+        
+        function drawOnStudent(username, payload) {
+            const student = students.get(username);
+            if (!student) return;
+            
+            const { type, x, y } = payload;
+            
+            if (type === 'start') {
+                student.ctx.strokeStyle = 'black';
+                student.ctx.lineWidth = 3;
+                student.ctx.beginPath();
+                student.ctx.moveTo(x, y);
+                student.isDrawing = true;
+            } else if (type === 'move' && student.isDrawing) {
+                student.ctx.lineTo(x, y);
+                student.ctx.stroke();
+            } else if (type === 'end') {
+                student.isDrawing = false;
+            }
+            
+            // Update preview
+            const card = Array.from(studentsDiv.children).find(c => 
+                c.querySelector('h3').textContent === username
+            );
+            if (card) {
+                const previewCanvas = card.querySelector('canvas');
+                const previewCtx = previewCanvas.getContext('2d');
+                previewCtx.drawImage(student.canvas, 0, 0);
+            }
+            
+            // Update big canvas if this student is open
+            if (currentStudent === username && modal.classList.contains('open')) {
+                bigCtx.drawImage(student.canvas, 0, 0);
+            }
+        }
+        
+        window.annotate = function(username) {
+            currentStudent = username;
+            const student = students.get(username);
+            if (!student) return;
+            
+            console.log('🎯 Opening annotation modal for:', username);
+            
+            // Copy student canvas to big canvas
+            bigCtx.clearRect(0, 0, 800, 600);
+            bigCtx.fillStyle = 'white';
+            bigCtx.fillRect(0, 0, 800, 600);
+            bigCtx.drawImage(student.canvas, 0, 0);
+            
+            // Clear overlay and redraw stored annotations
+            overlayCtx.clearRect(0, 0, 800, 600);
+            redrawStoredAnnotations(student);
+            
+            modalTitle.textContent = `Annotating ${username} (RED ink)`;
+            modal.classList.add('open');
+            
+            // Update overlay size AFTER modal is visible
+            setTimeout(() => {
+                updateOverlaySize();
+                console.log('✅ Overlay sized. Stored annotations:', student.teacherAnnotations.length);
+            }, 100);
+        };
+        
+        function redrawStoredAnnotations(student) {
+            if (!student.teacherAnnotations || student.teacherAnnotations.length === 0) return;
+            
+            console.log('🎨 Redrawing', student.teacherAnnotations.length, 'stored annotations');
+            
+            overlayCtx.strokeStyle = 'red';
+            overlayCtx.lineWidth = 4;
+            overlayCtx.lineCap = 'round';
+            overlayCtx.lineJoin = 'round';
+            
+            student.teacherAnnotations.forEach(annotation => {
+                if (!annotation.points || annotation.points.length === 0) return;
+                
+                overlayCtx.beginPath();
+                overlayCtx.moveTo(annotation.points[0].x, annotation.points[0].y);
+                
+                for (let i = 1; i < annotation.points.length; i++) {
+                    overlayCtx.lineTo(annotation.points[i].x, annotation.points[i].y);
+                }
+                
+                overlayCtx.stroke();
+            });
+        }
+        
+        function updateOverlaySize() {
+            const rect = bigCanvas.getBoundingClientRect();
+            console.log('📐 Updating overlay size:', rect);
+            overlay.style.width = rect.width + 'px';
+            overlay.style.height = rect.height + 'px';
+            
+            // Ensure overlay canvas is clickable
+            if (rect.width === 0 || rect.height === 0) {
+                console.warn('⚠️ Canvas has no size!');
+            }
+        }
+        
+        closeModal.onclick = () => {
+            modal.classList.remove('open');
+            currentStudent = null;
+        };
+        
+        // Overlay drawing with smooth stylus
+        let lastTeacherPoint = null;
+        
+        overlay.addEventListener('pointerdown', (e) => {
+            const student = students.get(currentStudent);
+            if (!student) return;
+            
+            // Only allow stylus/pen input - ignore palm touches
+            if (e.pointerType !== 'pen') return;
+            
+            isAnnotating = true;
+            const rect = overlay.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (800 / rect.width);
+            const y = (e.clientY - rect.top) * (600 / rect.height);
+            
+            lastTeacherPoint = { x, y };
+            
+            console.log('🎨 Teacher annotation START:', { x, y, target: currentStudent });
+            
+            // Start new annotation path
+            student.currentAnnotation = { points: [{ x, y }] };
+            
+            overlayCtx.strokeStyle = 'red';
+            overlayCtx.lineWidth = 4;  // Fixed solid tip
+            overlayCtx.lineCap = 'round';
+            overlayCtx.lineJoin = 'round';
+            overlayCtx.beginPath();
+            overlayCtx.moveTo(x, y);
+            
+            // Notify student
+            channel.send({
+                type: 'broadcast',
+                event: 'teacher_draw',
+                payload: { target: currentStudent, type: 'start', x, y }
+            });
+        });
+        
+        overlay.addEventListener('pointermove', (e) => {
+            if (!isAnnotating) return;
+            
+            const student = students.get(currentStudent);
+            if (!student || !student.currentAnnotation) return;
+            
+            const rect = overlay.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (800 / rect.width);
+            const y = (e.clientY - rect.top) * (600 / rect.height);
+            
+            // Smooth line interpolation with fixed width
+            if (lastTeacherPoint) {
+                const midX = (lastTeacherPoint.x + x) / 2;
+                const midY = (lastTeacherPoint.y + y) / 2;
+                
+                overlayCtx.lineWidth = 4;  // Fixed solid tip
+                overlayCtx.quadraticCurveTo(lastTeacherPoint.x, lastTeacherPoint.y, midX, midY);
+                overlayCtx.stroke();
+                overlayCtx.beginPath();
+                overlayCtx.moveTo(midX, midY);
+            }
+            
+            lastTeacherPoint = { x, y };
+            
+            // Store point in current annotation
+            student.currentAnnotation.points.push({ x, y });
+            
+            // Notify student
+            channel.send({
+                type: 'broadcast',
+                event: 'teacher_draw',
+                payload: { target: currentStudent, type: 'move', x, y }
+            });
+        });
+        
+        overlay.addEventListener('pointerup', stopAnnotating);
+        overlay.addEventListener('pointerleave', stopAnnotating);
+        
+        function stopAnnotating() {
+            if (!isAnnotating) return;
+            
+            const student = students.get(currentStudent);
+            if (student && student.currentAnnotation && student.currentAnnotation.points.length > 0) {
+                // Save completed annotation
+                student.teacherAnnotations.push(student.currentAnnotation);
+                console.log('💾 Saved annotation. Total:', student.teacherAnnotations.length);
+                
+                // Update preview card with annotations
+                updateStudentPreview(currentStudent);
+            }
+            
+            isAnnotating = false;
+            lastTeacherPoint = null;
+            
+            channel.send({
+                type: 'broadcast',
+                event: 'teacher_draw',
+                payload: { target: currentStudent, type: 'end' }
+            });
+        }
+        
+        function updateStudentPreview(username) {
+            const student = students.get(username);
+            if (!student) return;
+            
+            const card = Array.from(studentsDiv.children).find(c => 
+                c.querySelector('h3').textContent === username
+            );
+            if (!card) return;
+            
+            const previewCanvas = card.querySelector('canvas');
+            const previewCtx = previewCanvas.getContext('2d');
+            
+            // Draw student work
+            previewCtx.drawImage(student.canvas, 0, 0);
+            
+            // Draw teacher annotations on preview
+            if (student.teacherAnnotations.length > 0) {
+                previewCtx.strokeStyle = 'red';
+                previewCtx.lineWidth = 4;
+                previewCtx.lineCap = 'round';
+                previewCtx.lineJoin = 'round';
+                
+                student.teacherAnnotations.forEach(annotation => {
+                    if (!annotation.points || annotation.points.length === 0) return;
+                    
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(annotation.points[0].x, annotation.points[0].y);
+                    
+                    for (let i = 1; i < annotation.points.length; i++) {
+                        previewCtx.lineTo(annotation.points[i].x, annotation.points[i].y);
+                    }
+                    
+                    previewCtx.stroke();
+                });
+            }
+        }
+        
+        // Resize handler
+        window.addEventListener('resize', () => {
+            if (modal.classList.contains('open')) {
+                updateOverlaySize();
+            }
+        });
+    </script>
+</body>
+</html>

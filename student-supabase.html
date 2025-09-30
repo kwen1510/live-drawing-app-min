@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student - Minimal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #15803d 0%, #22c55e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        #loginForm {
+            background: white;
+            padding: 48px 40px;
+            border-radius: 24px;
+            box-shadow: 0 30px 90px rgba(0,0,0,0.3);
+            max-width: 450px;
+            width: 100%;
+        }
+        #loginForm h1 {
+            color: #1a202c;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+        #loginForm input {
+            width: 100%;
+            padding: 16px;
+            margin: 12px 0;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        #loginForm input:focus {
+            outline: none;
+            border-color: #22c55e;
+        }
+        #loginForm button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #15803d 0%, #22c55e 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #loginForm button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(34, 197, 94, 0.3);
+        }
+        #appContainer {
+            display: none;
+            width: 100%;
+            max-width: 900px;
+            gap: 20px;
+        }
+        h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: 700;
+            text-align: center;
+        }
+        .info {
+            color: rgba(255,255,255,0.9);
+            text-align: center;
+            font-size: 15px;
+        }
+        #status {
+            padding: 12px 24px;
+            background: rgba(34, 197, 94, 0.9);
+            color: white;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+        #status.connecting { background: rgba(251, 146, 60, 0.9); }
+        #status.error { background: rgba(239, 68, 68, 0.9); }
+        #canvasContainer {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 30px 90px rgba(0,0,0,0.3);
+            padding: 24px;
+        }
+        canvas {
+            border: 3px solid #e5e7eb;
+            border-radius: 16px;
+            display: block;
+            cursor: crosshair;
+            max-width: 100%;
+            height: auto;
+            background: white;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="loginForm">
+        <h1>Student Login</h1>
+        <input type="text" id="usernameInput" placeholder="Your name" maxlength="30" required autofocus>
+        <input type="text" id="sessionInput" placeholder="Session code (e.g., ABC123)" maxlength="10" required value="TEST123">
+        <button onclick="login()">Join Session</button>
+    </div>
+
+    <div id="appContainer">
+        <h1>Student Canvas</h1>
+        <div class="info">Draw with BLACK ink. Your teacher can see everything!</div>
+        <div id="status" class="connecting">Connecting...</div>
+        <div id="canvasContainer">
+            <canvas id="canvas" width="800" height="600"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Supabase configuration - safe for client-side use
+        window.SUPABASE_URL = "https://eytswszeopdxmtxxbkrb.supabase.co";
+        window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhia3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
+    </script>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm';
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
+        const loginForm = document.getElementById('loginForm');
+        const appContainer = document.getElementById('appContainer');
+        const usernameInput = document.getElementById('usernameInput');
+        const sessionInput = document.getElementById('sessionInput');
+        
+        let supabase, channel;
+        let username, sessionCode;
+        let isDrawing = false;
+        
+        // Setup canvas
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, 800, 600);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        window.login = async function() {
+            username = usernameInput.value.trim();
+            sessionCode = sessionInput.value.trim().toUpperCase();
+            
+            if (!username || !sessionCode) {
+                alert('Please enter both name and session code');
+                return;
+            }
+            
+            loginForm.style.display = 'none';
+            appContainer.style.display = 'flex';
+            
+            await setupSupabase();
+        };
+        
+        async function setupSupabase() {
+            status.textContent = 'Connecting to Supabase...';
+            status.className = 'connecting';
+            
+            if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+                status.textContent = 'ERROR: Supabase keys missing. Start the server!';
+                status.className = 'error';
+                return;
+            }
+            
+            supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+            
+            channel = supabase.channel(`minimal-${sessionCode}`, {
+                config: { broadcast: { ack: false } }
+            });
+            
+            // Listen for teacher annotations
+            channel.on('broadcast', { event: 'teacher_draw' }, ({ payload }) => {
+                console.log('📥 Received teacher_draw:', payload);
+                
+                if (payload.target !== username) {
+                    console.log('⚠️ Not for me. Target:', payload.target, 'My name:', username);
+                    return;
+                }
+                
+                const { type, x, y } = payload;
+                console.log('✅ Drawing teacher annotation:', { type, x, y });
+                
+                // Save current drawing state
+                ctx.save();
+                
+                if (type === 'start') {
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 4;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    console.log('🎨 Started RED at:', x, y);
+                } else if (type === 'move') {
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 4;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                    console.log('🎨 Drawing RED to:', x, y);
+                } else if (type === 'end') {
+                    console.log('🎨 Finished RED annotation');
+                    ctx.restore();
+                }
+            });
+            
+            channel.subscribe(async (channelStatus) => {
+                if (channelStatus === 'SUBSCRIBED') {
+                    status.textContent = `Connected as ${username}`;
+                    status.className = '';
+                    
+                    // Announce presence
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'student_ready',
+                        payload: { username, sessionCode }
+                    });
+                    
+                    console.log('✅ Connected to session:', sessionCode);
+                } else if (channelStatus === 'CHANNEL_ERROR') {
+                    status.textContent = 'Connection error';
+                    status.className = 'error';
+                }
+            });
+        }
+        
+        // Drawing with smooth stylus support
+        let lastPoint = null;
+        
+        canvas.addEventListener('pointerdown', (e) => {
+            // Only allow stylus/pen input - ignore palm touches
+            if (e.pointerType !== 'pen') return;
+            
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (800 / rect.width);
+            const y = (e.clientY - rect.top) * (600 / rect.height);
+            
+            lastPoint = { x, y };
+            
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 3;  // Fixed solid tip
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            
+            channel?.send({
+                type: 'broadcast',
+                event: 'student_draw',
+                payload: { username, type: 'start', x, y }
+            });
+        });
+        
+        canvas.addEventListener('pointermove', (e) => {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (800 / rect.width);
+            const y = (e.clientY - rect.top) * (600 / rect.height);
+            
+            // Smooth line interpolation with fixed width
+            if (lastPoint) {
+                const midX = (lastPoint.x + x) / 2;
+                const midY = (lastPoint.y + y) / 2;
+                
+                ctx.lineWidth = 3;  // Fixed solid tip
+                ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, midX, midY);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(midX, midY);
+            }
+            
+            lastPoint = { x, y };
+            
+            channel?.send({
+                type: 'broadcast',
+                event: 'student_draw',
+                payload: { username, type: 'move', x, y }
+            });
+        });
+        
+        canvas.addEventListener('pointerup', () => {
+            if (!isDrawing) return;
+            isDrawing = false;
+            lastPoint = null;
+            
+            channel?.send({
+                type: 'broadcast',
+                event: 'student_draw',
+                payload: { username, type: 'end' }
+            });
+        });
+        
+        canvas.addEventListener('pointerleave', () => {
+            if (!isDrawing) return;
+            isDrawing = false;
+            lastPoint = null;
+        });
+    </script>
+</body>
+</html>
