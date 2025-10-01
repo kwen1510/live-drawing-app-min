@@ -2,41 +2,57 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <title>Student Canvas — 800×600</title>
 <style>
   :root{
-    --bg:#0b1020; --card:#ffffff; --muted:#f1f5f9; --ink:#111827;
+    --card:#ffffff; --muted:#f1f5f9; --ink:#111827;
     --blue:#2563eb; --green:#16a34a; --red:#ef4444; --accent:#0ea5e9;
+    --chrome:#0b1222; --border:#1e2a49;
   }
   *{box-sizing:border-box}
+  html,body{height:100%}
   body{
-    margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial;
+    margin:0;
+    min-height:100svh; /* iPad-friendly */
     background: linear-gradient(135deg,#0f172a 0%, #1e293b 60%, #0b1020 100%);
-    color:#0f172a; padding:24px; display:flex; min-height:100svh; align-items:center; justify-content:center;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, Arial;
+    color:#0f172a;
+    padding:16px;
+    overflow:hidden; /* no scroll */
   }
+
   .wrap{
-    width:min(100%, 980px);
+    height:calc(100svh - 32px); /* fill without overflow */
+    display:flex; flex-direction:column; gap:10px;
+    max-width: 1220px; margin:0 auto;
   }
+
   .topbar{
-    display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; color:#e2e8f0;
+    display:flex; align-items:center; justify-content:space-between;
+    color:#e2e8f0; min-height:36px;
   }
-  .topbar .status{
-    display:inline-flex; gap:8px; align-items:center; font-size:14px; background: #0b1222; padding:6px 10px; border-radius:999px;
+  .status{
+    display:inline-flex; gap:8px; align-items:center; font-size:14px;
+    background: #0b1222; padding:6px 10px; border-radius:999px;
     border:1px solid #1f2a44;
   }
   .dot{width:8px;height:8px;border-radius:999px;background:#22c55e;box-shadow:0 0 0 3px rgb(34 197 94 / 15%)}
+
   .card{
+    flex:1; display:flex; flex-direction:column; gap:10px;
     background:var(--card); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.35);
-    padding:14px; border:1px solid #e5e7eb;
+    border:1px solid #e5e7eb; padding:12px; overflow:hidden;
   }
+
   .toolbar{
-    display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
   }
   .group{display:flex; align-items:center; gap:6px; background:var(--muted); border-radius:12px; padding:6px}
   .btn{
-    appearance:none; border:0; background:#fff; padding:8px 12px; border-radius:10px; cursor:pointer;
-    box-shadow:0 1px 0 rgba(0,0,0,.06) inset; border:1px solid #e5e7eb; font-weight:600;
+    appearance:none; border:1px solid #e5e7eb; background:#fff; padding:8px 12px; border-radius:10px; cursor:pointer;
+    box-shadow:0 1px 0 rgba(0,0,0,.06) inset; font-weight:600;
   }
   .btn[disabled]{opacity:.45; cursor:not-allowed}
   .btn.is-active{outline:2px solid var(--accent); outline-offset:0}
@@ -44,28 +60,31 @@
     width:28px;height:28px;border-radius:999px;border:2px solid #e2e8f0; box-shadow:0 1px 0 rgba(0,0,0,.06) inset; cursor:pointer;
   }
   .swatch.is-active{outline:2px solid #0ea5e9; outline-offset:2px}
-  .slider{
-    display:flex; align-items:center; gap:8px; padding:0 6px;
-  }
+  .slider{display:flex; align-items:center; gap:8px; padding:0 6px;}
   input[type="range"]{width:140px}
   .preview-dot{width:20px;height:20px;border-radius:999px;background:var(--ink); border:1px solid #cbd5e1}
-  .canvas-wrap{
-    display:flex; align-items:center; justify-content:center; background:#0b1222; border-radius:12px; padding:16px;
-    border:1px solid #1e2a49;
+  .pill{padding:6px 10px; border-radius:999px; font-weight:600; border:1px solid #e5e7eb; background:#fff}
+
+  .stage{
+    /* This region flexes to fill remaining height; we then fit the canvas inside it */
+    flex:1; min-height:0; /* important to avoid overflow */
+    display:flex; align-items:center; justify-content:center;
+    background:var(--chrome); border:1px solid var(--border);
+    border-radius:12px; padding:12px;
+    overflow:hidden;
   }
+
   canvas{
     display:block; background:#ffffff; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.25);
-    touch-action:none; /* important for iPad drawing */
-  }
-  .pill{
-    padding:6px 10px; border-radius:999px; font-weight:600; border:1px solid #e5e7eb; background:#fff;
+    /* We scale with CSS; pointer mapping compensates for size */
+    touch-action:none; /* crucial for iPad drawing */
   }
 </style>
 </head>
 <body>
   <div class="wrap">
     <div class="topbar">
-      <h1 style="margin:0; font-size:18px; font-weight:700; letter-spacing:.2px; color:#e2e8f0">Student Canvas</h1>
+      <h1 style="margin:0; font-size:18px; font-weight:700; letter-spacing:.2px;">Student Canvas</h1>
       <span class="status"><span class="dot" aria-hidden="true"></span><span>Ready</span></span>
     </div>
 
@@ -106,7 +125,7 @@
         </div>
       </div>
 
-      <div class="canvas-wrap">
+      <div class="stage" id="stage">
         <canvas id="pad" width="800" height="600" aria-label="Drawing canvas (800 by 600)"></canvas>
       </div>
     </div>
@@ -114,13 +133,15 @@
 
 <script>
 (() => {
-  // --- Config & State ---
+  // ===== Config =====
+  const CANVAS_W = 800, CANVAS_H = 600;
   const DEFAULT_COLOR = '#111827';
   const DEFAULT_SIZE = 2.2;
-  const MIN_SIZE = 1;
-  const MAX_SIZE = 12;
+  const MIN_SIZE = 1, MAX_SIZE = 12;
   const ERASER_MULT = 5.2;
 
+  // ===== Elements =====
+  const stage = document.getElementById('stage');
   const pad = document.getElementById('pad');
   const ctx = pad.getContext('2d', { alpha:false, desynchronized:true });
 
@@ -134,31 +155,43 @@
   const sizeLabel = document.getElementById('sizeLabel');
   const sizePreview = document.getElementById('sizePreview');
 
-  const tool = {
-    color: DEFAULT_COLOR,
-    size: DEFAULT_SIZE,
-    mode: 'pen', // 'pen' | 'eraser'
-    stylusOnly: true
-  };
+  // ===== State =====
+  const tool = { color: DEFAULT_COLOR, size: DEFAULT_SIZE, mode: 'pen', stylusOnly: true };
 
   const state = {
     drawing:false,
     pointerId:null,
-    buffer:[],
-    history:[],       // current stroke points (display coords)
-    raf:null,
-    paths:[],         // { color, width, erase, points:[{x,y}] }
-    undoStack:[],
-    redoStack:[]
+    currentPath:null, // { color,width,erase,points:[] }
+    paths:[],         // committed paths
+    undoStack:[],     // actions: {type:'draw'|'erase'|'clear', path?, entries?, prev?}
+    redoStack:[],
+    eraseBatch:null   // temp collection for grouped erases
   };
 
-  // --- Helpers ---
+  // ===== Layout: fit canvas (no scrolling, any orientation) =====
+  function fitCanvasToStage(){
+    // Available inner size of stage minus its paddings
+    const cs = getComputedStyle(stage);
+    const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    const availW = Math.max(0, stage.clientWidth - padX);
+    const availH = Math.max(0, stage.clientHeight - padY);
+
+    const scale = Math.min(availW / CANVAS_W, availH / CANVAS_H, 1); // never upscale above 1
+    pad.style.width  = (CANVAS_W * scale) + 'px';
+    pad.style.height = (CANVAS_H * scale) + 'px';
+  }
+
+  // ===== Utils =====
   const clamp = (v,min,max)=>Math.min(max,Math.max(min,v));
-  function setInk(color){ tool.color = color; updateColorUI(); updateSizeUI(); }
-  function setMode(mode){ tool.mode = mode; updateToolUI(); updateSizeUI(); }
-  function setSize(px){ tool.size = clamp(+px||DEFAULT_SIZE, MIN_SIZE, MAX_SIZE); updateSizeUI(); }
   function eraserSize(){ return clamp(tool.size * ERASER_MULT, MIN_SIZE*ERASER_MULT, MAX_SIZE*ERASER_MULT); }
   function baseWidth(){ return tool.mode==='eraser' ? eraserSize() : tool.size; }
+
+  function resetCanvas(){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0, CANVAS_W, CANVAS_H);
+  }
 
   function updateColorUI(){
     colorBtns.forEach(b=>{
@@ -170,8 +203,8 @@
     toolBtns.forEach(b => b.classList.toggle('is-active', b.dataset.tool===tool.mode));
   }
   function updateSizeUI(){
-    sizeSlider.value = tool.mode==='eraser' ? (tool.size) : tool.size;
-    sizeLabel.textContent = `${tool.size.toFixed(1)} px`;
+    sizeSlider.value = tool.size;
+    sizeLabel.textContent = `${(+tool.size).toFixed(1)} px`;
     const previewSize = Math.round((tool.size - MIN_SIZE) / (MAX_SIZE - MIN_SIZE) * 28 + 10);
     sizePreview.style.width = previewSize + 'px';
     sizePreview.style.height = previewSize + 'px';
@@ -182,15 +215,21 @@
     redoBtn.disabled = state.redoStack.length===0;
   }
 
-  // --- Canvas background ---
-  function resetCanvas(){
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0,0, pad.width, pad.height);
+  // Precise mapping from client coords to internal (800×600) coords, even if CSS scaled
+  function canvasPoint(e){
+    const r = pad.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (pad.width  / r.width);
+    const y = (e.clientY - r.top)  * (pad.height / r.height);
+    return { x, y };
   }
-  resetCanvas();
 
-  // --- Rendering ---
+  function supportedPointer(e){
+    const t = (e.pointerType||'').toLowerCase();
+    if(tool.stylusOnly) return t==='' || t==='pen' || t==='mouse';
+    return t==='' || t==='pen' || t==='mouse' || t==='touch';
+  }
+
+  // ===== Rendering (live & committed) =====
   function drawDot(pt, width, color, erase){
     const r = Math.max(0.45*width, Math.min(0.8*width, 0.5*width));
     ctx.save();
@@ -200,34 +239,30 @@
     ctx.fill(); ctx.restore();
   }
 
-  function strokePath(points, width, color, erase){
-    if(points.length===1){ drawDot(points[0], width, color, erase); return; }
+  function strokeLiveBegin(pt, width, color, erase){
     ctx.save();
     ctx.globalCompositeOperation = erase ? 'destination-out' : 'source-over';
     ctx.strokeStyle = erase ? '#000' : color;
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = width;
     ctx.beginPath();
-    let prev = points[0];
-    ctx.moveTo(prev.x, prev.y);
-    for(let i=1;i<points.length;i++){
-      const cur = points[i];
-      const mid = { x:(prev.x+cur.x)/2, y:(prev.y+cur.y)/2 };
-      ctx.lineWidth = width;
-      ctx.quadraticCurveTo(prev.x, prev.y, mid.x, mid.y);
-      ctx.stroke();
-      prev = cur;
-    }
-    // end cap
-    drawDot(points[points.length-1], width, color, erase);
-    ctx.restore();
+    ctx.moveTo(pt.x, pt.y);
   }
+  function strokeLiveTo(pt){ ctx.lineTo(pt.x, pt.y); ctx.stroke(); }
+  function strokeLiveEnd(){ ctx.restore(); }
 
   function renderAll(){
     resetCanvas();
-    state.paths.forEach(p => strokePath(p.points, p.width, p.color, p.erase));
+    state.paths.forEach(p => {
+      if(!p.points.length){ return; }
+      if(p.points.length===1){ drawDot(p.points[0], p.width, p.color, p.erase); return; }
+      // replay path
+      strokeLiveBegin(p.points[0], p.width, p.color, p.erase);
+      for(let i=1;i<p.points.length;i++) strokeLiveTo(p.points[i]);
+      strokeLiveEnd();
+    });
   }
 
-  // --- Hit testing for eraser (erase whole stroke you touch) ---
+  // ===== Hit testing for eraser (erase whole stroke you touch) =====
   function dist(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return Math.hypot(dx,dy); }
   function distToSeg(p,a,b){
     const vx=b.x-a.x, vy=b.y-a.y, wx=p.x-a.x, wy=p.y-a.y;
@@ -249,36 +284,30 @@
     return -1;
   }
 
-  // --- Pointer utils ---
-  function supportedPointer(e){
-    const t = (e.pointerType||'').toLowerCase();
-    if(tool.stylusOnly) return t==='' || t==='pen' || t==='mouse';
-    return t==='' || t==='pen' || t==='mouse' || t==='touch';
-  }
-  function canvasPoint(e){
-    const r = pad.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  }
-
-  // --- Drawing lifecycle ---
+  // ===== Drawing lifecycle =====
   function startStroke(e){
     if(!supportedPointer(e)) return;
     e.preventDefault();
     if(typeof e.pointerId==='number' && pad.setPointerCapture){
       try{ pad.setPointerCapture(e.pointerId);}catch{}
     }
-    state.drawing = true;
-    state.pointerId = e.pointerId ?? null;
-    state.buffer = [];
-    state.history = [];
     const pt = canvasPoint(e);
+
     if(tool.mode==='eraser'){
-      // begin erase session
-      eraseAt(pt, true);
+      state.eraseBatch = [];
+      eraseAt(pt); // immediate erase if hitting something
+      state.drawing = true;
+      state.pointerId = e.pointerId ?? null;
       return;
     }
-    state.history.push(pt);
-    scheduleDraw(false);
+
+    // Begin a new ink stroke
+    const p = { color: tool.color, width: baseWidth(), erase:false, points:[pt] };
+    state.currentPath = p;
+    strokeLiveBegin(pt, p.width, p.color, false);
+
+    state.drawing = true;
+    state.pointerId = e.pointerId ?? null;
   }
 
   function moveStroke(e){
@@ -286,105 +315,125 @@
     if(state.pointerId!=null && e.pointerId!=null && e.pointerId!==state.pointerId) return;
     if(!supportedPointer(e)) return;
     e.preventDefault();
+
     const pt = canvasPoint(e);
+
     if(tool.mode==='eraser'){
-      eraseAt(pt, false);
+      eraseAt(pt);
       return;
     }
-    state.history.push(pt);
-    scheduleDraw(false);
+
+    // Continue live ink stroke
+    state.currentPath.points.push(pt);
+    strokeLiveTo(pt);
   }
 
   function endStroke(e){
     if(!state.drawing) return;
     if(state.pointerId!=null && e.pointerId!=null && e.pointerId!==state.pointerId) return;
     e.preventDefault();
+
     if(typeof e.pointerId==='number' && pad.releasePointerCapture){
       try{ pad.releasePointerCapture(e.pointerId);}catch{}
     }
-    if(tool.mode!=='eraser' && state.history.length){
-      if(state.raf){ cancelAnimationFrame(state.raf); state.raf=null; }
-      strokePath(state.history, baseWidth(), tool.color, false);
-      state.paths.push({ color: tool.color, width: baseWidth(), erase:false, points:[...state.history] });
-      state.undoStack.push({ type:'draw' });
+
+    if(tool.mode==='eraser'){
+      finishErase();
+      state.drawing=false; state.pointerId=null; return;
+    }
+
+    // Finalize ink stroke
+    const p = state.currentPath;
+    if(p){
+      if(p.points.length===1){
+        drawDot(p.points[0], p.width, p.color, false); // ensure dot visible
+      }
+      strokeLiveEnd();
+      state.paths.push(p);
+      state.undoStack.push({ type:'draw', path: p });
       state.redoStack.length=0;
       updateHistoryUI();
+      state.currentPath = null;
     }
-    state.drawing=false; state.pointerId=null; state.history=[];
+
+    state.drawing=false; state.pointerId=null;
   }
+
   function cancelStroke(e){
     if(!state.drawing) return;
     e.preventDefault();
-    state.drawing=false; state.pointerId=null; state.history=[];
-    if(state.raf){ cancelAnimationFrame(state.raf); state.raf=null; }
+    if(tool.mode==='eraser'){
+      finishErase();
+    }else{
+      // cancel live stroke (do not commit)
+      strokeLiveEnd();
+      renderAll(); // redraw to erase any partial live path
+      state.currentPath=null;
+    }
+    state.drawing=false; state.pointerId=null;
   }
 
-  function eraseAt(pt, first){
-    if(first){
-      // begin a grouped erase action
-      state._eraseBatch = [];
-    }
+  // ===== Erasing (stroke-level) =====
+  function eraseAt(pt){
     const idx = hitStrokeIndex(pt);
     if(idx!==-1){
       const [removed] = state.paths.splice(idx,1);
-      state._eraseBatch.push({ path: removed, index: idx });
+      state.eraseBatch.push({ path: removed, index: idx });
       renderAll();
     }
   }
   function finishErase(){
-    const batch = state._eraseBatch || [];
+    const batch = state.eraseBatch || [];
     if(batch.length){
       state.undoStack.push({ type:'erase', entries: batch });
-      state.redoStack.length=0; updateHistoryUI();
+      state.redoStack.length=0;
+      updateHistoryUI();
     }
-    state._eraseBatch = null;
+    state.eraseBatch=null;
   }
 
-  // Smooth rendering via RAF
-  function scheduleDraw(finalFlush){
-    if(state.raf) return;
-    state.raf = requestAnimationFrame(()=>{
-      state.raf=null;
-      if(!state.history.length) return;
-      const pts = state.history;
-      const w = baseWidth(); const color = tool.color;
-      // incremental draw:
-      if(pts.length===1){
-        drawDot(pts[0], w, color, false);
-      }else{
-        const seg = pts.slice(-2);
-        strokePath(seg, w, color, false);
-      }
-      if(finalFlush){ /* not used here */ }
-    });
-  }
-
-  // --- History actions ---
+  // ===== History actions =====
   undoBtn.addEventListener('click', () => {
     if(!state.undoStack.length) return;
     const action = state.undoStack.pop();
+
     if(action.type==='draw'){
-      const removed = state.paths.pop();
-      if(removed) state.redoStack.push({ type:'draw', path: removed });
-    }else if(action.type==='erase'){
-      // put back removed strokes in original positions
-      const entries = action.entries || [];
+      const path = action.path;
+      const i = state.paths.lastIndexOf(path);
+      if(i!==-1) state.paths.splice(i,1);
+      else state.paths.pop();
+      state.redoStack.push({ type:'draw', path });
+    }
+
+    else if(action.type==='erase'){
+      // Put back removed strokes at their original indices
+      const entries = action.entries||[];
       for(let i=entries.length-1;i>=0;i--){
         const { path, index } = entries[i];
         state.paths.splice(index, 0, path);
       }
       state.redoStack.push({ type:'erase', entries });
     }
+
+    else if(action.type==='clear'){
+      // Restore previous snapshot
+      state.paths = deepClonePaths(action.prev);
+      state.redoStack.push({ type:'clear', prev: deepClonePaths(action.prev) });
+    }
+
     renderAll(); updateHistoryUI();
   });
 
   redoBtn.addEventListener('click', () => {
     if(!state.redoStack.length) return;
     const action = state.redoStack.pop();
+
     if(action.type==='draw'){
       state.paths.push(action.path);
-      state.undoStack.push({ type:'draw' });
-    }else if(action.type==='erase'){
+      state.undoStack.push({ type:'draw', path: action.path });
+    }
+
+    else if(action.type==='erase'){
       const performed=[];
       (action.entries||[]).forEach(({ path, index })=>{
         const i = state.paths.indexOf(path);
@@ -398,42 +447,78 @@
       });
       if(performed.length) state.undoStack.push({ type:'erase', entries: performed });
     }
+
+    else if(action.type==='clear'){
+      // Apply clear again
+      const prevNow = deepClonePaths(state.paths);
+      state.paths.length = 0;
+      state.undoStack.push({ type:'clear', prev: prevNow });
+    }
+
     renderAll(); updateHistoryUI();
   });
 
   clearBtn.addEventListener('click', () => {
-    state.paths.length=0; state.undoStack.length=0; state.redoStack.length=0;
+    const snapshot = deepClonePaths(state.paths);
+    if(snapshot.length===0){ return; }
+    state.paths.length = 0;
+    state.undoStack.push({ type:'clear', prev: snapshot });
+    state.redoStack.length=0;
     renderAll(); updateHistoryUI();
   });
 
-  // --- UI wiring ---
+  function deepClonePaths(arr){
+    return arr.map(p => ({
+      color:p.color, width:p.width, erase:p.erase,
+      points: p.points.map(q => ({ x:q.x, y:q.y }))
+    }));
+  }
+
+  // ===== UI wiring =====
   colorBtns.forEach(b=>{
-    b.addEventListener('click', ()=>{ setInk(b.dataset.color); setMode('pen'); });
+    b.addEventListener('click', ()=>{
+      tool.color = b.dataset.color; updateColorUI(); updateToolUI(); updateSizeUI();
+      tool.mode = 'pen';
+    });
   });
   toolBtns.forEach(b=>{
-    b.addEventListener('click', ()=> setMode(b.dataset.tool));
+    b.addEventListener('click', ()=>{
+      tool.mode = b.dataset.tool; updateToolUI(); updateSizeUI();
+    });
   });
-  sizeSlider.addEventListener('input', e => setSize(e.target.value));
+  sizeSlider.addEventListener('input', e=>{
+    tool.size = clamp(+e.target.value||DEFAULT_SIZE, MIN_SIZE, MAX_SIZE);
+    updateSizeUI();
+  });
   stylusBtn.addEventListener('click', ()=>{
     tool.stylusOnly = !tool.stylusOnly;
     stylusBtn.setAttribute('aria-pressed', String(tool.stylusOnly));
     stylusBtn.textContent = tool.stylusOnly ? 'Stylus-only' : 'Pen/Touch';
   });
 
-  // --- Pointer events ---
-  pad.addEventListener('pointerdown', (e)=>{ startStroke(e); });
-  pad.addEventListener('pointermove', (e)=>{ moveStroke(e); });
-  pad.addEventListener('pointerup',   (e)=>{ if(tool.mode==='eraser') finishErase(); endStroke(e); });
-  pad.addEventListener('pointercancel',(e)=>{ if(tool.mode==='eraser') finishErase(); cancelStroke(e); });
-  pad.addEventListener('pointerleave', (e)=>{ if(tool.mode==='eraser') finishErase(); cancelStroke(e); });
+  // ===== Pointer events =====
+  pad.addEventListener('pointerdown', startStroke, { passive:false });
+  pad.addEventListener('pointermove', moveStroke, { passive:false });
+  pad.addEventListener('pointerup',   endStroke,   { passive:false });
+  pad.addEventListener('pointercancel', cancelStroke, { passive:false });
+  pad.addEventListener('pointerleave',  cancelStroke, { passive:false });
 
-  // prevent page scrolling/zoom gestures interfering on iPad
+  // Prevent iPad gestures interfering
   ['touchstart','touchmove','gesturestart'].forEach(ev=>{
     pad.addEventListener(ev, e=>{ e.preventDefault(); }, { passive:false });
   });
 
-  // init UI
+  // ===== Init =====
+  resetCanvas();
   updateColorUI(); updateToolUI(); updateSizeUI(); updateHistoryUI();
+  fitCanvasToStage();
+
+  // Refit on viewport changes (orientation, split view, etc.)
+  window.addEventListener('resize', fitCanvasToStage);
+  window.addEventListener('orientationchange', fitCanvasToStage);
+  if(window.visualViewport){
+    visualViewport.addEventListener('resize', fitCanvasToStage);
+  }
 })();
 </script>
 </body>
