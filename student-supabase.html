@@ -349,6 +349,30 @@
           "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-slate-600 ring-1 ring-slate-200 bg-slate-100",
       };
 
+      function createSupabaseClient() {
+        return createClient(
+          window.SUPABASE_URL,
+          window.SUPABASE_ANON_KEY,
+          {
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+            },
+            global: {
+              headers: {
+                apikey: window.SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${window.SUPABASE_ANON_KEY}`,
+              },
+            },
+            realtime: {
+              params: {
+                apikey: window.SUPABASE_ANON_KEY,
+              },
+            },
+          },
+        );
+      }
+
       let supabase, channel;
       let username, sessionCode;
       let isDrawing = false;
@@ -912,10 +936,7 @@
         updateStatus("connecting", "Connecting…");
 
         try {
-          supabase = createClient(
-            window.SUPABASE_URL,
-            window.SUPABASE_ANON_KEY,
-          );
+          supabase = createSupabaseClient();
           channel = supabase.channel(`minimal-${sessionCode}`, {
             config: { broadcast: { ack: false } },
           });
