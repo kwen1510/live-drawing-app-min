@@ -8,6 +8,7 @@
   />
   <title>Student - Minimal</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="canvas-app.css" />
   <style>
     :root {
       color-scheme: light;
@@ -23,26 +24,6 @@
       inset: 0;
       height: 100dvh;
       width: 100%;
-    }
-    .color-btn {
-      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    }
-    .color-btn:hover {
-      transform: scale(1.05);
-    }
-    .color-btn.active {
-      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 0 6px rgba(15, 118, 110, 0.3);
-      border-color: rgba(15, 118, 110, 0.7);
-    }
-    .tool-btn.active {
-      background: rgb(15 118 110);
-      color: white;
-      border-color: rgb(15 118 110);
-      box-shadow: 0 10px 25px rgba(15, 118, 110, 0.25);
-    }
-    .stylus-indicator.off {
-      background: rgb(226 232 240);
-      color: rgb(100 116 139);
     }
     .status-dot {
       appearance: none;
@@ -126,101 +107,57 @@
         >
           <span id="statusText" class="sr-only">Connecting...</span>
         </button>
-        <button
-          id="stylusToggle"
-          class="stylus-indicator inline-flex items-center rounded-lg bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-200"
-        >
-          Stylus mode (pen only)
-        </button>
-        <button
-          id="swapToolbarBtn"
-          type="button"
-          class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200"
-        >
-          Move toolbar to right
-        </button>
       </div>
     </div>
 
     <div id="workspace" class="flex flex-1 min-h-0 items-stretch gap-3 overflow-hidden">
-      <div
-        id="toolbarWrapper"
-        class="flex min-h-0 w-[158px] flex-col rounded-3xl border border-slate-200 bg-white/95 p-3 text-slate-700 shadow-[0_22px_55px_rgba(15,23,42,0.16)]"
-      >
-        <div class="flex-1 space-y-4 overflow-y-auto pr-1">
-          <div class="flex flex-col items-center gap-3">
-            <span class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Colors</span>
-            <div id="colorPalette" class="flex flex-col items-center gap-2.5"></div>
-          </div>
-          <div class="space-y-3">
-            <span class="block text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Tools</span>
-            <div class="flex flex-col gap-2">
-              <button
-                class="tool-btn rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-                data-tool="pen"
-              >
-                Pen
-              </button>
-              <button
-                class="tool-btn rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-                data-tool="eraser"
-              >
-                Eraser
-              </button>
+      <div class="flex min-h-0 flex-1 rounded-[24px] border border-emerald-100 bg-white/80 p-4 shadow-inner">
+        <div class="canvas-app" id="studentCanvasApp">
+          <div class="wrap">
+            <div class="topbar">
+              <h2>Student Canvas</h2>
+              <span class="status" id="studentCanvasStatus" data-tone="ready">
+                <span class="dot" aria-hidden="true"></span>
+                <span id="studentCanvasStatusText">Ready</span>
+              </span>
+            </div>
+            <div class="card">
+              <div class="toolbar" role="toolbar" aria-label="Student drawing controls">
+                <div class="group" role="group" aria-label="Ink colour">
+                  <button class="swatch is-active" data-color="#111827" title="Black" style="background:#111827"></button>
+                  <button class="swatch" data-color="#2563eb" title="Blue" style="background:#2563eb"></button>
+                  <button class="swatch" data-color="#16a34a" title="Green" style="background:#16a34a"></button>
+                  <button class="swatch" data-color="#ef4444" title="Red" style="background:#ef4444"></button>
+                </div>
+                <div class="group" role="group" aria-label="Tool">
+                  <button class="btn is-active" data-tool="pen" title="Pen">Pen</button>
+                  <button class="btn" data-tool="eraser" title="Eraser">Eraser</button>
+                </div>
+                <div class="group slider" role="group" aria-label="Brush size">
+                  <label for="studentBrush" class="pill">Size</label>
+                  <input id="studentBrush" type="range" min="1" max="12" value="2.2" step="0.2" />
+                  <div class="preview-dot" id="studentSizePreview" title="Preview"></div>
+                  <span id="studentSizeLabel" class="pill">2.2 px</span>
+                </div>
+                <div class="group" role="group" aria-label="History">
+                  <button class="btn" id="studentUndoBtn" disabled>Undo</button>
+                  <button class="btn" id="studentRedoBtn" disabled>Redo</button>
+                  <button class="btn" id="studentClearBtn" disabled>Clear</button>
+                </div>
+                <div class="group" role="group" aria-label="Input">
+                  <button class="btn" id="studentStylusBtn" aria-pressed="true">Stylus-only</button>
+                </div>
+              </div>
+              <div class="stage" id="studentStage">
+                <canvas
+                  id="studentPad"
+                  width="800"
+                  height="600"
+                  aria-label="Student drawing canvas (800 by 600)"
+                ></canvas>
+              </div>
             </div>
           </div>
-          <div class="space-y-3">
-            <span class="block text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Brush Size</span>
-            <div class="flex items-center justify-between gap-2 rounded-2xl bg-slate-50 px-2.5 py-2 shadow-inner">
-              <input
-                type="range"
-                id="brushSize"
-                min="1"
-                max="20"
-                value="3"
-                class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-500"
-              />
-              <span id="sizeDisplay" class="text-xs font-bold text-slate-800">3</span>
-            </div>
-          </div>
-          <div class="space-y-3">
-            <span class="block text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">History</span>
-            <div class="flex flex-col gap-2">
-              <button
-                id="undoBtn"
-                class="action-btn rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-                disabled
-              >
-                Undo
-              </button>
-              <button
-                id="redoBtn"
-                class="action-btn rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-                disabled
-              >
-                Redo
-              </button>
-              <button
-                id="clearBtn"
-                class="action-btn rounded-lg bg-rose-100 px-2.5 py-1 text-[11px] font-semibold text-rose-600 shadow-sm transition hover:bg-rose-200"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="flex min-h-0 flex-1 items-center justify-center rounded-[24px] border border-emerald-100 bg-white/65 p-3 shadow-inner">
-        <div
-          id="stage"
-          class="flex h-full max-h-[640px] w-full max-w-[840px] flex-1 items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_20px_55px_rgba(15,23,42,0.12)]"
-        >
-          <canvas
-            id="canvas"
-            width="800"
-            height="600"
-            class="block max-h-full max-w-full rounded-2xl bg-white shadow-inner shadow-slate-900/5"
-          ></canvas>
         </div>
       </div>
     </div>
@@ -233,740 +170,27 @@
   </script>
 
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm';
+    import initCanvasApp from './canvas-app.js';
 
-    /* ----------------- DOM ----------------- */
-    const canvas = document.getElementById('canvas');
-    const statusEl = document.getElementById('status');
-    const statusTextEl = document.getElementById('statusText');
-    const connectionLabel = document.getElementById('connectionLabel');
-    const loginForm = document.getElementById('loginForm');
-    const appContainer = document.getElementById('appContainer');
-    const usernameInput = document.getElementById('usernameInput');
-    const sessionInput = document.getElementById('sessionInput');
-    const loginBtn = document.getElementById('loginBtn');
-
-    const colorPaletteEl = document.getElementById('colorPalette');
-    const toolBtns = document.querySelectorAll('.tool-btn');
-    const brushSizeInput = document.getElementById('brushSize');
-    const sizeDisplay = document.getElementById('sizeDisplay');
-    const undoBtn = document.getElementById('undoBtn');
-    const redoBtn = document.getElementById('redoBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const stylusToggle = document.getElementById('stylusToggle');
-    const swapToolbarBtn = document.getElementById('swapToolbarBtn');
-    const workspace = document.getElementById('workspace');
-    const stage = document.getElementById('stage');
-
-    const CANVAS_WIDTH = 800;
-    const CANVAS_HEIGHT = 600;
-
-    const COLOR_PRESETS = [
-      { label: 'Black', value: '#111827' },
-      { label: 'Blue', value: '#2563eb' },
-      { label: 'Green', value: '#16a34a' }
-    ];
-
-    canvas.style.touchAction = 'none';
-
-    /* ----------------- Canvas / DPR ----------------- */
-    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
-    let dpr = 1;
-
-    function resizeCanvasForDPR() {
-      dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-      canvas.width = Math.round(CANVAS_WIDTH * dpr);
-      canvas.height = Math.round(CANVAS_HEIGHT * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      renderAll();
-    }
-
-    function fitCanvasToStage() {
-      if (!stage) return;
-      const style = getComputedStyle(stage);
-      const padX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-      const padY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-      const availW = Math.max(0, stage.clientWidth - padX);
-      const availH = Math.max(0, stage.clientHeight - padY);
-      const scale = Math.min(availW / CANVAS_WIDTH, availH / CANVAS_HEIGHT, 1);
-      canvas.style.width = `${CANVAS_WIDTH * scale}px`;
-      canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
-    }
-
-    const stageObserver = new ResizeObserver(fitCanvasToStage);
-    if (stage) stageObserver.observe(stage);
-    window.addEventListener('orientationchange', () => setTimeout(() => {
-      fitCanvasToStage();
-      resizeCanvasForDPR();
-    }, 150));
-    window.addEventListener('resize', fitCanvasToStage);
-    fitCanvasToStage();
-
-    /* ----------------- State ----------------- */
-    let sbClient = null;
-    let channel = null;
-    let username = '';
-    let sessionCode = '';
-
-    let currentColor = COLOR_PRESETS[0].value;
-    let currentTool = 'pen';
-    let brushSize = 3;
-    let stylusOnly = true;
-
-    const state = {
-      drawing: false,
-      pointerId: null,
-      currentPath: null,
-      strokes: [],
-      undoStack: [],
-      redoStack: [],
-      eraseBatch: null,
-      lastErasePoint: null,
-      eraseBefore: null
-    };
-
-    /* ----------------- UI wiring ----------------- */
-    function setStatus(kind, text) {
-      connectionLabel.textContent = text;
-      statusEl.className = 'status-dot';
-      if (kind === 'error') {
-        statusEl.classList.add('status-dot--error');
-      } else if (kind === 'connected') {
-        statusEl.classList.add('status-dot--connected');
-      }
-      statusEl.setAttribute('title', text);
-      statusEl.setAttribute('aria-label', text);
-      if (statusTextEl) statusTextEl.textContent = text;
-    }
-    setStatus('connecting', 'Waiting to connect');
-
-    function updateColorSelection() {
-      const buttons = colorPaletteEl.querySelectorAll('.color-btn');
-      buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === currentColor));
-    }
-
-    function renderColorButtons() {
-      colorPaletteEl.innerHTML = '';
-      COLOR_PRESETS.forEach(preset => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'color-btn flex h-9 w-9 items-center justify-center rounded-full border-2 border-transparent shadow-sm';
-        btn.dataset.color = preset.value;
-        btn.title = preset.label;
-        btn.setAttribute('aria-label', preset.label);
-        btn.style.background = preset.value;
-        btn.addEventListener('click', () => {
-          currentColor = preset.value;
-          updateColorSelection();
-          if (currentTool === 'eraser') {
-            currentTool = 'pen';
-            updateToolButtons();
-          }
-        });
-        colorPaletteEl.appendChild(btn);
-      });
-      updateColorSelection();
-    }
-    renderColorButtons();
-    function updateToolButtons() {
-      toolBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.tool === currentTool));
-    }
-    toolBtns.forEach(btn => btn.addEventListener('click', () => {
-      currentTool = btn.dataset.tool;
-      updateToolButtons();
-    }));
-    updateToolButtons();
-
-    brushSizeInput.addEventListener('input', e => {
-      brushSize = parseInt(e.target.value, 10);
-      sizeDisplay.textContent = brushSize;
+    initCanvasApp({
+      root: document.getElementById('studentCanvasApp'),
+      stage: document.getElementById('studentStage'),
+      canvas: document.getElementById('studentPad'),
+      colorButtons: [...document.querySelectorAll('#studentCanvasApp [data-color]')],
+      toolButtons: [...document.querySelectorAll('#studentCanvasApp [data-tool]')],
+      undoButton: document.getElementById('studentUndoBtn'),
+      redoButton: document.getElementById('studentRedoBtn'),
+      clearButton: document.getElementById('studentClearBtn'),
+      stylusToggle: document.getElementById('studentStylusBtn'),
+      sizeSlider: document.getElementById('studentBrush'),
+      sizeLabel: document.getElementById('studentSizeLabel'),
+      sizePreview: document.getElementById('studentSizePreview'),
+      statusElement: document.getElementById('studentCanvasStatus'),
+      statusText: document.getElementById('studentCanvasStatusText'),
+      role: 'student',
+      remoteLabel: 'teacher',
+      channelName: 'classroom-canvas',
     });
-
-    stylusToggle.addEventListener('click', () => {
-      stylusOnly = !stylusOnly;
-      stylusToggle.classList.toggle('off', !stylusOnly);
-      stylusToggle.textContent = stylusOnly ? 'Stylus mode (pen only)' : 'All inputs';
-    });
-
-    let toolbarOnLeft = true;
-    function updateToolbarPosition() {
-      if (toolbarOnLeft) {
-        workspace.classList.remove('flex-row-reverse');
-        swapToolbarBtn.textContent = 'Move toolbar to right';
-        swapToolbarBtn.setAttribute('aria-pressed', 'false');
-      } else {
-        workspace.classList.add('flex-row-reverse');
-        swapToolbarBtn.textContent = 'Move toolbar to left';
-        swapToolbarBtn.setAttribute('aria-pressed', 'true');
-      }
-      requestAnimationFrame(fitCanvasToStage);
-    }
-    swapToolbarBtn.addEventListener('click', () => {
-      toolbarOnLeft = !toolbarOnLeft;
-      updateToolbarPosition();
-    });
-    updateToolbarPosition();
-
-    undoBtn.addEventListener('click', undo);
-    redoBtn.addEventListener('click', redo);
-    clearBtn.addEventListener('click', clearCanvas);
-
-    /* ----------------- Session persistence ----------------- */
-    function clonePath(path) {
-      return {
-        id: path.id,
-        color: path.color,
-        size: path.size,
-        points: (path.points || []).map(pt => ({ x: pt.x, y: pt.y })),
-        isTeacher: !!path.isTeacher
-      };
-    }
-
-    function clonePaths(list) {
-      return (list || []).map(clonePath);
-    }
-
-    function saveToSession() {
-      if (!username) return;
-      try {
-        sessionStorage.setItem('student_drawing_' + username, JSON.stringify({
-          strokes: clonePaths(state.strokes),
-          username,
-          timestamp: Date.now()
-        }));
-      } catch {}
-    }
-    function loadFromSession() {
-      if (!username) return;
-      try {
-        const raw = sessionStorage.getItem('student_drawing_' + username);
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        state.strokes = clonePaths(data.strokes || []);
-        renderAll();
-        state.undoStack.length = 0;
-        state.redoStack.length = 0;
-        updateHistoryButtons();
-      } catch {}
-    }
-
-    /* ----------------- Timeline helpers ----------------- */
-    function updateHistoryButtons() {
-      undoBtn.disabled = state.undoStack.length === 0;
-      redoBtn.disabled = state.redoStack.length === 0;
-    }
-
-    function buildStateSnapshot(list) {
-      return (list || []).map(item => ({
-        id: item.id,
-        color: item.color,
-        size: item.size,
-        points: (item.points || []).map(pt => ({ x: pt.x, y: pt.y }))
-      }));
-    }
-
-    function broadcastDiff(prevSnapshot, nextSnapshot) {
-      if (!channel) return;
-      const prevMap = new Map(prevSnapshot.map(s => [s.id, s]));
-      const nextMap = new Map(nextSnapshot.map(s => [s.id, s]));
-      const added = [];
-      const removed = [];
-      nextMap.forEach((value, key) => {
-        if (!prevMap.has(key)) added.push(value);
-      });
-      prevMap.forEach((value, key) => {
-        if (!nextMap.has(key)) removed.push(key);
-      });
-      if (added.length || removed.length) {
-        channel.send({
-          type: 'broadcast',
-          event: 'student_state_change',
-          payload: { username, added, removed }
-        });
-      }
-    }
-
-    function undo() {
-      if (!state.undoStack.length) return;
-      const prevSnapshot = buildStateSnapshot(state.strokes);
-      const action = state.undoStack.pop();
-
-      if (action.type === 'draw') {
-        const path = action.path;
-        let idx = state.strokes.lastIndexOf(path);
-        if (idx === -1 && path?.id) {
-          idx = state.strokes.findIndex(s => s.id === path.id);
-        }
-        if (idx !== -1) {
-          state.strokes.splice(idx, 1);
-          state.redoStack.push({ type: 'draw', path });
-        }
-      }
-
-      else if (action.type === 'erase') {
-        const entries = action.entries || [];
-        for (let i = entries.length - 1; i >= 0; i--) {
-          const { path, index } = entries[i];
-          const insertAt = Number.isFinite(index) ? Math.min(index, state.strokes.length) : state.strokes.length;
-          state.strokes.splice(insertAt, 0, path);
-        }
-        state.redoStack.push({ type: 'erase', entries });
-      }
-
-      else if (action.type === 'clear') {
-        const prev = action.prev || [];
-        state.redoStack.push({ type: 'clear', prev: clonePaths(state.strokes) });
-        state.strokes = clonePaths(prev);
-      }
-
-      renderAll();
-      updateHistoryButtons();
-      saveToSession();
-      const nextSnapshot = buildStateSnapshot(state.strokes);
-      broadcastDiff(prevSnapshot, nextSnapshot);
-    }
-
-    function redo() {
-      if (!state.redoStack.length) return;
-      const prevSnapshot = buildStateSnapshot(state.strokes);
-      const action = state.redoStack.pop();
-
-      if (action.type === 'draw') {
-        const path = action.path;
-        state.strokes.push(path);
-        state.undoStack.push({ type: 'draw', path });
-      }
-
-      else if (action.type === 'erase') {
-        const performed = [];
-        (action.entries || []).forEach(({ path, index }) => {
-          let idx = state.strokes.indexOf(path);
-          if (idx === -1 && path?.id) {
-            idx = state.strokes.findIndex(s => s.id === path.id);
-          }
-          if (idx !== -1) {
-            state.strokes.splice(idx, 1);
-            performed.push({ path, index: idx });
-          } else if (Number.isFinite(index) && index >= 0 && index < state.strokes.length) {
-            const [removed] = state.strokes.splice(index, 1);
-            if (removed) performed.push({ path: removed, index });
-          }
-        });
-        state.undoStack.push({ type: 'erase', entries: performed });
-      }
-
-      else if (action.type === 'clear') {
-        const snapshot = clonePaths(state.strokes);
-        state.strokes = [];
-        state.undoStack.push({ type: 'clear', prev: snapshot });
-      }
-
-      renderAll();
-      updateHistoryButtons();
-      saveToSession();
-      const nextSnapshot = buildStateSnapshot(state.strokes);
-      broadcastDiff(prevSnapshot, nextSnapshot);
-    }
-
-    function clearCanvas() {
-      if (!state.strokes.length) {
-        renderAll();
-        return;
-      }
-      const prevSnapshot = buildStateSnapshot(state.strokes);
-      const snapshot = clonePaths(state.strokes);
-      state.strokes = [];
-      state.undoStack.push({ type: 'clear', prev: snapshot });
-      state.redoStack.length = 0;
-      renderAll();
-      updateHistoryButtons();
-      saveToSession();
-      broadcastDiff(prevSnapshot, []);
-      channel?.send({ type: 'broadcast', event: 'student_clear', payload: { username } });
-    }
-
-    /* ----------------- Drawing ----------------- */
-    function drawDot(pt, size, color) {
-      if (!pt) return;
-      const radius = Math.max(0.45 * size, Math.min(0.8 * size, 0.5 * size));
-      ctx.save();
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    function strokeLiveBegin(pt, size, color) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = color;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = size;
-      ctx.beginPath();
-      ctx.moveTo(pt.x, pt.y);
-    }
-
-    function strokeLiveTo(pt) {
-      ctx.lineTo(pt.x, pt.y);
-      ctx.stroke();
-    }
-
-    function strokeLiveEnd() {
-      ctx.restore();
-    }
-
-    function renderAll() {
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      state.strokes.forEach(path => {
-        const pts = path.points || [];
-        if (!pts.length) return;
-        if (pts.length === 1) {
-          drawDot(pts[0], path.size || brushSize, path.color || '#111827');
-          return;
-        }
-        ctx.save();
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = path.color || '#111827';
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = path.size || brushSize;
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) {
-          ctx.lineTo(pts[i].x, pts[i].y);
-        }
-        ctx.stroke();
-        ctx.restore();
-      });
-    }
-
-    function getCanvasPoint(ev) {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = CANVAS_WIDTH / rect.width || 1;
-      const scaleY = CANVAS_HEIGHT / rect.height || 1;
-      return {
-        x: (ev.clientX - rect.left) * scaleX,
-        y: (ev.clientY - rect.top) * scaleY
-      };
-    }
-
-    function dist(a, b) {
-      const dx = a.x - b.x;
-      const dy = a.y - b.y;
-      return Math.hypot(dx, dy);
-    }
-
-    function distToSeg(p, a, b) {
-      const vx = b.x - a.x;
-      const vy = b.y - a.y;
-      const wx = p.x - a.x;
-      const wy = p.y - a.y;
-      const c = vx * vx + vy * vy;
-      if (!c) return dist(p, a);
-      let t = (wx * vx + wy * vy) / c;
-      t = Math.max(0, Math.min(1, t));
-      const cx = a.x + t * vx;
-      const cy = a.y + t * vy;
-      return Math.hypot(p.x - cx, p.y - cy);
-    }
-
-    function hitStrokeIndex(pt) {
-      for (let i = state.strokes.length - 1; i >= 0; i--) {
-        const path = state.strokes[i];
-        const pts = path.points || [];
-        if (!pts.length) continue;
-        const size = path.size || brushSize;
-        const pad = Math.max(size * 0.6, 6);
-        if (pts.length === 1) {
-          if (dist(pt, pts[0]) <= pad) return i;
-          continue;
-        }
-        for (let j = 1; j < pts.length; j++) {
-          if (distToSeg(pt, pts[j - 1], pts[j]) <= pad) return i;
-        }
-      }
-      return -1;
-    }
-
-    function eraseAt(pt) {
-      if (!state.eraseBatch) return;
-      const idx = hitStrokeIndex(pt);
-      if (idx !== -1) {
-        const [removed] = state.strokes.splice(idx, 1);
-        if (!removed) return;
-        state.eraseBatch.push({ path: removed, index: idx });
-        renderAll();
-        saveToSession();
-        channel?.send({ type: 'broadcast', event: 'student_stroke_delete', payload: { username, strokeId: removed.id } });
-      }
-    }
-
-    function finishErase() {
-      if (!state.eraseBatch) return;
-      const batch = state.eraseBatch.filter(entry => entry && entry.path);
-      if (batch.length) {
-        state.undoStack.push({ type: 'erase', entries: batch });
-        state.redoStack.length = 0;
-        updateHistoryButtons();
-        saveToSession();
-        const nextSnapshot = buildStateSnapshot(state.strokes);
-        if (state.eraseBefore) {
-          broadcastDiff(state.eraseBefore, nextSnapshot);
-        }
-      }
-      state.eraseBatch = null;
-      state.lastErasePoint = null;
-      state.eraseBefore = null;
-    }
-
-    function startStroke(e) {
-      if (stylusOnly && e.pointerType && e.pointerType !== 'pen') return;
-      e.preventDefault();
-      state.pointerId = e.pointerId ?? null;
-      state.drawing = true;
-      if (state.pointerId != null) {
-        try { canvas.setPointerCapture(state.pointerId); } catch {}
-      }
-      const pt = getCanvasPoint(e);
-
-      if (currentTool === 'eraser') {
-        state.eraseBefore = buildStateSnapshot(state.strokes);
-        state.eraseBatch = [];
-        state.lastErasePoint = pt;
-        eraseAt(pt);
-        return;
-      }
-
-      const stroke = {
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        color: currentColor,
-        size: brushSize,
-        points: [pt]
-      };
-      state.currentPath = stroke;
-      strokeLiveBegin(pt, stroke.size, stroke.color);
-      channel?.send({ type: 'broadcast', event: 'student_stroke_start', payload: { username, stroke: { id: stroke.id, color: stroke.color, size: stroke.size } } });
-    }
-
-    function moveStroke(e) {
-      if (!state.drawing) return;
-      if (state.pointerId != null && e.pointerId != null && e.pointerId !== state.pointerId) return;
-      e.preventDefault();
-      const pt = getCanvasPoint(e);
-
-      if (currentTool === 'eraser' && state.eraseBatch) {
-        if (state.lastErasePoint) {
-          const prev = state.lastErasePoint;
-          const distStep = Math.hypot(pt.x - prev.x, pt.y - prev.y);
-          const steps = Math.max(1, Math.floor(distStep / 8));
-          for (let i = 1; i <= steps; i++) {
-            const t = i / steps;
-            eraseAt({
-              x: prev.x + (pt.x - prev.x) * t,
-              y: prev.y + (pt.y - prev.y) * t
-            });
-          }
-        } else {
-          eraseAt(pt);
-        }
-        state.lastErasePoint = pt;
-        return;
-      }
-
-      if (!state.currentPath) return;
-      state.currentPath.points.push(pt);
-      strokeLiveTo(pt);
-      channel?.send({ type: 'broadcast', event: 'student_stroke_point', payload: { username, strokeId: state.currentPath.id, x: pt.x, y: pt.y } });
-    }
-
-    function endStroke(e) {
-      if (!state.drawing) return;
-      if (state.pointerId != null && e.pointerId != null && e.pointerId !== state.pointerId) return;
-      e.preventDefault();
-      if (state.pointerId != null) {
-        try { canvas.releasePointerCapture(state.pointerId); } catch {}
-      }
-
-      if (currentTool === 'eraser') {
-        finishErase();
-        state.drawing = false;
-        state.pointerId = null;
-        return;
-      }
-
-      const path = state.currentPath;
-      if (path) {
-        if (path.points.length === 1) {
-          drawDot(path.points[0], path.size, path.color);
-        }
-        strokeLiveEnd();
-        state.strokes.push(path);
-        state.undoStack.push({ type: 'draw', path });
-        state.redoStack.length = 0;
-        renderAll();
-        updateHistoryButtons();
-        saveToSession();
-        channel?.send({
-          type: 'broadcast',
-          event: 'student_stroke_end',
-          payload: {
-            username,
-            stroke: {
-              id: path.id,
-              color: path.color,
-              size: path.size,
-              points: path.points.map(p => ({ x: p.x, y: p.y }))
-            }
-          }
-        });
-      }
-
-      state.currentPath = null;
-      state.drawing = false;
-      state.pointerId = null;
-    }
-
-    function cancelStroke(e) {
-      if (!state.drawing) return;
-      if (state.pointerId != null && e.pointerId != null && e.pointerId !== state.pointerId) return;
-      e.preventDefault();
-      if (state.pointerId != null) {
-        try { canvas.releasePointerCapture(state.pointerId); } catch {}
-      }
-
-      if (currentTool === 'eraser') {
-        finishErase();
-      } else if (state.currentPath) {
-        strokeLiveEnd();
-        state.currentPath = null;
-        renderAll();
-      }
-
-      state.drawing = false;
-      state.pointerId = null;
-    }
-
-    canvas.addEventListener('pointerdown', startStroke, { passive: false });
-    canvas.addEventListener('pointermove', moveStroke, { passive: false });
-    canvas.addEventListener('pointerup', endStroke, { passive: false });
-    canvas.addEventListener('pointercancel', cancelStroke, { passive: false });
-    canvas.addEventListener('pointerleave', cancelStroke, { passive: false });
-
-    /* ----------------- Supabase wiring ----------------- */
-    function wireTeacherEvents(ch) {
-      ch.on('broadcast', { event: 'teacher_stroke_end' }, ({ payload }) => {
-        if (payload.target !== username) return;
-        const s = payload.stroke;
-        if (!s?.id) return;
-        const path = {
-          id: s.id,
-          color: s.color || '#111827',
-          size: s.size || 3,
-          points: (s.points || []).map(p => ({ x: p.x, y: p.y })),
-          isTeacher: true
-        };
-        const existing = state.strokes.findIndex(item => item.id === path.id);
-        if (existing === -1) state.strokes.push(path);
-        else state.strokes[existing] = path;
-        renderAll();
-        updateHistoryButtons();
-        saveToSession();
-      });
-
-      ch.on('broadcast', { event: 'teacher_state_change' }, ({ payload }) => {
-        if (payload.target !== username) return;
-        (payload.added || []).forEach(a => {
-          if (!a?.id) return;
-          if (!state.strokes.find(s => s.id === a.id)) {
-            state.strokes.push({
-              id: a.id,
-              color: a.color || '#111827',
-              size: a.size || 3,
-              points: (a.points || []).map(p => ({ x: p.x, y: p.y })),
-              isTeacher: true
-            });
-          }
-        });
-        (payload.removed || []).forEach(id => {
-          const idx = state.strokes.findIndex(s => s.id === id);
-          if (idx >= 0) {
-            state.strokes.splice(idx, 1);
-          }
-        });
-        renderAll();
-        updateHistoryButtons();
-        saveToSession();
-      });
-
-      ch.on('broadcast', { event: 'teacher_stroke_delete' }, ({ payload }) => {
-        if (payload.target !== username) return;
-        const idx = state.strokes.findIndex(s => s.id === payload.strokeId);
-        if (idx >= 0) {
-          state.strokes.splice(idx, 1);
-          renderAll();
-          updateHistoryButtons();
-          saveToSession();
-        }
-      });
-
-      ch.on('broadcast', { event: 'teacher_clear' }, ({ payload }) => {
-        if (payload.target !== username) return;
-        state.strokes = state.strokes.filter(s => !s.isTeacher);
-        renderAll();
-        updateHistoryButtons();
-        saveToSession();
-      });
-    }
-
-    async function setupSupabase() {
-      setStatus('connecting', 'Connecting to Supabase...');
-      const { SUPABASE_URL, SUPABASE_ANON_KEY } = window;
-      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        setStatus('error', 'ERROR: Supabase keys missing.');
-        return;
-      }
-      sbClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      channel = sbClient.channel(`minimal-${sessionCode}`, { config: { broadcast: { ack: false } } });
-      wireTeacherEvents(channel);
-      channel.subscribe(async (st) => {
-        if (st === 'SUBSCRIBED') {
-          setStatus('connected', `Connected as ${username}`);
-          await channel.send({ type:'broadcast', event:'student_ready', payload:{ username, sessionCode }});
-        } else if (st === 'CHANNEL_ERROR') {
-          setStatus('error', 'Connection error');
-        }
-      });
-    }
-
-    /* ----------------- Login ----------------- */
-    async function login() {
-      username = usernameInput.value.trim();
-      sessionCode = sessionInput.value.trim().toUpperCase();
-      if (!username || !sessionCode) {
-        alert('Please enter both name and session code');
-        return;
-      }
-      loginForm.classList.add('hidden');
-      appContainer.classList.remove('hidden');
-      requestAnimationFrame(() => {
-        fitCanvasToStage();
-        resizeCanvasForDPR();
-      });
-      loadFromSession();
-      await setupSupabase();
-    }
-    loginBtn.addEventListener('click', login);
-    usernameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
-    sessionInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
-
-    // initial paint
-    fitCanvasToStage();
-    resizeCanvasForDPR();
   </script>
 </body>
 </html>
