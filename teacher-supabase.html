@@ -140,28 +140,6 @@
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhia3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
   </script>
 
-  <script type="module">
-    import initCanvasApp from './canvas-app.js';
-
-    initCanvasApp({
-      root: document.getElementById('teacherCanvasApp'),
-      stage: document.getElementById('teacherStage'),
-      canvas: document.getElementById('teacherPad'),
-      colorButtons: [...document.querySelectorAll('#teacherCanvasApp [data-color]')],
-      toolButtons: [...document.querySelectorAll('#teacherCanvasApp [data-tool]')],
-      undoButton: document.getElementById('teacherUndoBtn'),
-      redoButton: document.getElementById('teacherRedoBtn'),
-      clearButton: document.getElementById('teacherClearBtn'),
-      stylusToggle: document.getElementById('teacherStylusBtn'),
-      sizeSlider: document.getElementById('teacherBrush'),
-      sizeLabel: document.getElementById('teacherSizeLabel'),
-      sizePreview: document.getElementById('teacherSizePreview'),
-      statusElement: document.getElementById('teacherCanvasStatus'),
-      statusText: document.getElementById('teacherCanvasStatusText'),
-      role: 'teacher',
-      remoteLabel: 'student',
-      channelName: 'classroom-canvas',
-    });
-  </script>
+  <script type="module" src="./teacher-app.js"></script>
 </body>
 </html>
