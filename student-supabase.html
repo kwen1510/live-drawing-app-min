@@ -794,7 +794,7 @@
 
       /* ---------- Supabase minimal channel + teacher events ---------- */
       const sbClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      let channel = null;
+      channel = null;
 
       function wireTeacherEvents(ch) {
         ch.on("broadcast", { event: "teacher_stroke_end" }, ({ payload }) => {
