@@ -1,4 +1,5 @@
 import initCanvasApp from './canvas-app.js';
+import { createMessageChannel } from './realtime-channel.js';
 
 const loginForm = document.getElementById('loginForm');
 const appContainer = document.getElementById('appContainer');
@@ -11,7 +12,7 @@ const connectionLabel = document.getElementById('connectionLabel');
 const loginError = document.getElementById('loginError');
 
 const STORAGE_KEY = 'liveDrawing.student';
-const presenceChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('classroom-presence') : null;
+const presenceChannel = createMessageChannel('classroom-presence');
 
 let currentStudent = null;
 
@@ -230,6 +231,9 @@ window.addEventListener('beforeunload', () => {
   announcePresence('student-left');
   if(canvasApp?.destroy){
     canvasApp.destroy();
+  }
+  if(presenceChannel?.close){
+    presenceChannel.close();
   }
 });
 
