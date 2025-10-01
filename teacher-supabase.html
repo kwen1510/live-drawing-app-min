@@ -16,14 +16,14 @@
       transform: scale(1.05);
     }
     .color-btn.active {
-      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 0 6px rgba(37, 99, 235, 0.25);
-      border-color: rgba(37, 99, 235, 0.65);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 0 6px rgba(139, 92, 246, 0.3);
+      border-color: rgba(139, 92, 246, 0.65);
     }
     .tool-btn.active {
-      background: rgb(37 99 235);
+      background: rgb(139 92 246);
       color: white;
-      border-color: rgb(37 99 235);
-      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
+      border-color: rgb(139 92 246);
+      box-shadow: 0 10px 25px rgba(139, 92, 246, 0.25);
     }
     .stylus-indicator.off {
       background: rgb(226 232 240);
@@ -211,12 +211,9 @@
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm';
 
     const COLOR_PRESETS = [
-      { label: 'Ink', value: '#111827' },
-      { label: 'Ocean', value: '#2563eb' },
-      { label: 'Magenta', value: '#db2777' },
-      { label: 'Emerald', value: '#10b981' },
-      { label: 'Sunrise', value: '#f97316' },
-      { label: 'Gold', value: '#facc15' }
+      { label: 'Red', value: '#ef4444' },
+      { label: 'Purple', value: '#8b5cf6' },
+      { label: 'Teal', value: '#0d9488' }
     ];
 
     const MIN_SAMPLE_DISTANCE = 0.45;
@@ -366,7 +363,7 @@
       COLOR_PRESETS.forEach(preset => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'color-btn flex h-12 w-12 items-center justify-center rounded-full border-4 border-transparent shadow-sm';
+        btn.className = 'color-btn flex h-10 w-10 items-center justify-center rounded-full border-2 border-transparent shadow-sm';
         btn.dataset.color = preset.value;
         btn.title = preset.label;
         btn.setAttribute('aria-label', preset.label);

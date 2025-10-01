@@ -19,18 +19,37 @@
       transform: scale(1.05);
     }
     .color-btn.active {
-      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 0 6px rgba(15, 23, 42, 0.9);
-      border-color: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 0 6px rgba(15, 118, 110, 0.3);
+      border-color: rgba(15, 118, 110, 0.7);
     }
     .tool-btn.active {
-      background: rgb(15 23 42);
+      background: rgb(15 118 110);
       color: white;
-      border-color: rgb(15 23 42);
-      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+      border-color: rgb(15 118 110);
+      box-shadow: 0 10px 25px rgba(15, 118, 110, 0.25);
     }
     .stylus-indicator.off {
       background: rgb(226 232 240);
       color: rgb(100 116 139);
+    }
+    .status-dot {
+      appearance: none;
+      border: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 9999px;
+      background: #f59e0b;
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+      transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+      display: inline-flex;
+    }
+    .status-dot.status-dot--connected {
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+    }
+    .status-dot.status-dot--error {
+      background: #ef4444;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25);
     }
   </style>
 </head>
@@ -77,115 +96,116 @@
 
   <div
     id="appContainer"
-    class="hidden flex h-[min(880px,calc(100vh-3rem))] w-full max-w-[1180px] flex-col justify-between gap-5 rounded-[28px] border border-emerald-100/60 bg-white/80 p-6 text-slate-700 shadow-[0_45px_90px_rgba(15,118,110,0.18)] backdrop-blur"
+    class="hidden flex h-[min(820px,calc(100vh-2rem))] w-full max-w-[1120px] flex-col gap-4 rounded-[24px] border border-emerald-100/60 bg-white/85 p-4 text-slate-700 shadow-[0_35px_80px_rgba(15,118,110,0.18)] backdrop-blur"
   >
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <h1 class="text-3xl font-bold tracking-tight text-slate-900 drop-shadow-sm">Student Canvas</h1>
-        <p class="mt-1 max-w-xl text-sm font-medium text-slate-500">
-          Draw freely with rich colors and tools. Your teacher sees every stroke in real time.
-        </p>
+    <div class="flex items-center justify-between rounded-2xl border border-emerald-100 bg-white/70 px-4 py-3">
+      <div class="min-w-0">
+        <h1 class="text-lg font-semibold tracking-tight text-slate-900">Student Canvas</h1>
+        <p id="connectionLabel" class="text-xs font-medium text-slate-500">Preparing session...</p>
       </div>
-      <div class="flex flex-col items-stretch justify-end gap-3 text-sm font-semibold text-slate-600">
-        <div
-          id="status"
-          class="rounded-2xl px-5 py-2 text-center text-white shadow-inner shadow-emerald-900/10 transition-colors duration-200"
-        >
-          Connecting...
-        </div>
-        <button
-          id="swapToolbarBtn"
-          type="button"
-          class="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200"
-        >
-          Move toolbar to right
-        </button>
-      </div>
+      <button
+        id="status"
+        type="button"
+        class="status-dot"
+        aria-live="polite"
+        aria-label="Connecting..."
+        title="Connecting..."
+      >
+        <span id="statusText" class="sr-only">Connecting...</span>
+      </button>
     </div>
 
-    <div class="flex flex-1 items-center justify-center overflow-hidden">
+    <div id="workspace" class="flex flex-1 min-h-0 items-stretch gap-4 overflow-hidden">
       <div
-        id="workspace"
-        class="flex w-full max-w-[1100px] items-center justify-center gap-6 rounded-[24px] border border-emerald-100 bg-white/60 p-5 shadow-inner"
+        id="toolbarWrapper"
+        class="flex min-h-0 w-[170px] flex-col rounded-3xl border border-slate-200 bg-white/95 p-4 text-slate-700 shadow-[0_22px_55px_rgba(15,23,42,0.16)]"
       >
-        <div
-          id="toolbarWrapper"
-          class="flex h-[600px] w-[180px] flex-col items-stretch justify-between rounded-3xl border border-slate-200 bg-white/95 p-5 text-slate-700 shadow-[0_25px_55px_rgba(15,23,42,0.18)]"
-        >
-          <div class="space-y-5">
-            <div class="flex flex-col items-center gap-3">
-              <span class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Colors</span>
-              <div id="colorPalette" class="flex flex-col items-center gap-3"></div>
-            </div>
-            <div class="space-y-3">
-              <span class="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Tools</span>
-              <div class="flex flex-col gap-2">
-                <button
-                  class="tool-btn rounded-2xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-                  data-tool="pen"
-                >
-                  Pen
-                </button>
-                <button
-                  class="tool-btn rounded-2xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-                  data-tool="eraser"
-                >
-                  Eraser
-                </button>
-              </div>
-            </div>
-            <div class="space-y-3">
-              <span class="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Brush Size</span>
-              <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-3 shadow-inner">
-                <input
-                  type="range"
-                  id="brushSize"
-                  min="1"
-                  max="20"
-                  value="3"
-                  class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-500"
-                />
-                <span id="sizeDisplay" class="text-base font-bold text-slate-800">3</span>
-              </div>
+        <div class="flex-1 space-y-4 overflow-y-auto pr-1">
+          <div class="flex flex-col items-center gap-3">
+            <span class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Colors</span>
+            <div id="colorPalette" class="flex flex-col items-center gap-3"></div>
+          </div>
+          <div class="space-y-3">
+            <span class="block text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Tools</span>
+            <div class="flex flex-col gap-2">
+              <button
+                class="tool-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                data-tool="pen"
+              >
+                Pen
+              </button>
+              <button
+                class="tool-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                data-tool="eraser"
+              >
+                Eraser
+              </button>
             </div>
           </div>
           <div class="space-y-3">
+            <span class="block text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Brush Size</span>
+            <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2 shadow-inner">
+              <input
+                type="range"
+                id="brushSize"
+                min="1"
+                max="20"
+                value="3"
+                class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-500"
+              />
+              <span id="sizeDisplay" class="text-sm font-bold text-slate-800">3</span>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <span class="block text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">History</span>
             <div class="flex flex-col gap-2">
               <button
                 id="undoBtn"
-                class="action-btn rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                class="action-btn rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
                 disabled
               >
                 Undo
               </button>
               <button
                 id="redoBtn"
-                class="action-btn rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                class="action-btn rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
                 disabled
               >
                 Redo
               </button>
               <button
                 id="clearBtn"
-                class="action-btn rounded-2xl bg-rose-100 px-4 py-2 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-200"
+                class="action-btn rounded-xl bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-600 shadow-sm transition hover:bg-rose-200"
               >
                 Clear
               </button>
             </div>
-            <button
-              id="stylusToggle"
-              class="stylus-indicator w-full rounded-2xl bg-blue-100 px-4 py-2 text-center text-sm font-semibold text-blue-700 transition hover:bg-blue-200"
-            >
-              Stylus mode (pen only)
-            </button>
           </div>
+          <button
+            id="stylusToggle"
+            class="stylus-indicator w-full rounded-xl bg-blue-100 px-3 py-1.5 text-center text-xs font-semibold text-blue-700 transition hover:bg-blue-200"
+          >
+            Stylus mode (pen only)
+          </button>
         </div>
-        <div class="flex h-[600px] items-center justify-center rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_25px_55px_rgba(15,23,42,0.12)]">
+        <button
+          id="swapToolbarBtn"
+          type="button"
+          class="mt-3 inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+        >
+          Move toolbar to right
+        </button>
+      </div>
+      <div class="flex min-h-0 flex-1 items-center justify-center rounded-[24px] border border-emerald-100 bg-white/65 p-3 shadow-inner">
+        <div
+          id="stage"
+          class="flex h-[600px] w-full max-w-[840px] flex-1 items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_20px_55px_rgba(15,23,42,0.12)]"
+        >
           <canvas
             id="canvas"
             width="800"
             height="600"
-            class="h-[600px] w-[800px] rounded-3xl border-2 border-slate-200 bg-white shadow-inner shadow-slate-900/5"
+            class="block max-h-full max-w-full rounded-2xl bg-white shadow-inner shadow-slate-900/5"
           ></canvas>
         </div>
       </div>
@@ -204,6 +224,8 @@
     /* ----------------- DOM ----------------- */
     const canvas = document.getElementById('canvas');
     const statusEl = document.getElementById('status');
+    const statusTextEl = document.getElementById('statusText');
+    const connectionLabel = document.getElementById('connectionLabel');
     const loginForm = document.getElementById('loginForm');
     const appContainer = document.getElementById('appContainer');
     const usernameInput = document.getElementById('usernameInput');
@@ -220,17 +242,13 @@
     const stylusToggle = document.getElementById('stylusToggle');
     const swapToolbarBtn = document.getElementById('swapToolbarBtn');
     const workspace = document.getElementById('workspace');
+    const stage = document.getElementById('stage');
 
     const COLOR_PRESETS = [
-      { label: 'Ink', value: '#111827' },
-      { label: 'Ocean', value: '#2563eb' },
-      { label: 'Magenta', value: '#db2777' },
-      { label: 'Emerald', value: '#10b981' },
-      { label: 'Sunrise', value: '#f97316' },
-      { label: 'Gold', value: '#facc15' }
+      { label: 'Black', value: '#111827' },
+      { label: 'Blue', value: '#2563eb' },
+      { label: 'Green', value: '#16a34a' }
     ];
-
-    const statusBaseClasses = statusEl.className;
 
     canvas.style.touchAction = 'none';
 
@@ -251,7 +269,27 @@
     }
     const ro = new ResizeObserver(resizeCanvasForDPR);
     ro.observe(canvas);
-    window.addEventListener('orientationchange', () => setTimeout(resizeCanvasForDPR, 150));
+
+    function fitCanvasToStage() {
+      if (!stage) return;
+      const style = getComputedStyle(stage);
+      const padX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      const padY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      const availW = Math.max(0, stage.clientWidth - padX);
+      const availH = Math.max(0, stage.clientHeight - padY);
+      const scale = Math.min(availW / 800, availH / 600, 1);
+      canvas.style.width = `${800 * scale}px`;
+      canvas.style.height = `${600 * scale}px`;
+    }
+
+    const stageObserver = new ResizeObserver(fitCanvasToStage);
+    if (stage) stageObserver.observe(stage);
+    window.addEventListener('orientationchange', () => setTimeout(() => {
+      fitCanvasToStage();
+      resizeCanvasForDPR();
+    }, 150));
+    window.addEventListener('resize', fitCanvasToStage);
+    fitCanvasToStage();
 
     /* ----------------- State ----------------- */
     let sbClient = null;
@@ -284,15 +322,16 @@
 
     /* ----------------- UI wiring ----------------- */
     function setStatus(kind, text) {
-      statusEl.textContent = text;
-      statusEl.className = statusBaseClasses;
+      connectionLabel.textContent = text;
+      statusEl.className = 'status-dot';
       if (kind === 'error') {
-        statusEl.classList.add('bg-rose-500/90');
-      } else if (kind === 'connecting') {
-        statusEl.classList.add('bg-amber-500/90');
-      } else {
-        statusEl.classList.add('bg-emerald-500/90');
+        statusEl.classList.add('status-dot--error');
+      } else if (kind === 'connected') {
+        statusEl.classList.add('status-dot--connected');
       }
+      statusEl.setAttribute('title', text);
+      statusEl.setAttribute('aria-label', text);
+      if (statusTextEl) statusTextEl.textContent = text;
     }
     setStatus('connecting', 'Waiting to connect');
 
@@ -306,7 +345,7 @@
       COLOR_PRESETS.forEach(preset => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'color-btn flex h-12 w-12 items-center justify-center rounded-full border-4 border-transparent shadow-sm';
+        btn.className = 'color-btn flex h-10 w-10 items-center justify-center rounded-full border-2 border-transparent shadow-sm';
         btn.dataset.color = preset.value;
         btn.title = preset.label;
         btn.setAttribute('aria-label', preset.label);
@@ -355,6 +394,7 @@
         swapToolbarBtn.textContent = 'Move toolbar to left';
         swapToolbarBtn.setAttribute('aria-pressed', 'true');
       }
+      requestAnimationFrame(fitCanvasToStage);
     }
     swapToolbarBtn.addEventListener('click', () => {
       toolbarOnLeft = !toolbarOnLeft;
@@ -847,7 +887,7 @@
       wireTeacherEvents(channel);
       channel.subscribe(async (st) => {
         if (st === 'SUBSCRIBED') {
-          setStatus('', `Connected as ${username}`);
+          setStatus('connected', `Connected as ${username}`);
           await channel.send({ type:'broadcast', event:'student_ready', payload:{ username, sessionCode }});
         } else if (st === 'CHANNEL_ERROR') {
           setStatus('error', 'Connection error');
@@ -865,8 +905,11 @@
       }
       loginForm.classList.add('hidden');
       appContainer.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        fitCanvasToStage();
+        resizeCanvasForDPR();
+      });
       loadFromSession();
-      resizeCanvasForDPR();
       await setupSupabase();
     }
     loginBtn.addEventListener('click', login);
@@ -874,6 +917,7 @@
     sessionInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
 
     // initial paint
+    fitCanvasToStage();
     resizeCanvasForDPR();
   </script>
 </body>
