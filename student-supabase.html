@@ -7,120 +7,188 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
   />
   <title>Student - Minimal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      background: linear-gradient(135deg, #15803d 0%, #22c55e 100%);
-      min-height: 100vh; display: flex; flex-direction: column;
-      justify-content: center; align-items: center; padding: 20px;
+    :root {
+      color-scheme: light;
     }
-    #loginForm {
-      background: white; padding: 48px 40px; border-radius: 24px;
-      box-shadow: 0 30px 90px rgba(0,0,0,0.3); max-width: 450px; width: 100%;
-    }
-    #loginForm h1 { color:#1a202c; font-size:32px; font-weight:700; margin-bottom:32px; text-align:center; }
-    #loginForm input {
-      width:100%; padding:16px; margin:12px 0; border:2px solid #e5e7eb;
-      border-radius:12px; font-size:16px; transition:border-color .3s;
-    }
-    #loginForm input:focus { outline:none; border-color:#22c55e; }
-    #loginForm button {
-      width:100%; padding:16px; background:linear-gradient(135deg,#15803d 0%, #22c55e 100%);
-      color:white; border:none; border-radius:12px; font-size:18px; font-weight:600; cursor:pointer;
-      margin-top:8px; transition: transform .2s, box-shadow .2s;
-    }
-    #loginForm button:hover { transform: translateY(-2px); box-shadow:0 12px 32px rgba(34,197,94,.3); }
-    #appContainer { display:none; width:100%; max-width:900px; gap:20px; flex-direction:column; align-items:center; }
-    h1 { color:white; font-size:28px; font-weight:700; text-align:center; }
-    .info { color: rgba(255,255,255,0.9); text-align:center; font-size:15px; }
-    #status {
-      padding: 12px 24px; background: rgba(34, 197, 94, 0.9); color: white;
-      border-radius: 12px; font-size: 15px; font-weight: 600; text-align: center; backdrop-filter: blur(10px);
-    }
-    #status.connecting { background: rgba(251, 146, 60, 0.9); }
-    #status.error { background: rgba(239, 68, 68, 0.9); }
-    #canvasContainer {
-      background: white; border-radius: 24px; box-shadow: 0 30px 90px rgba(0,0,0,0.3); padding: 24px; width:100%;
-    }
-    .toolbar {
-      display:flex; align-items:center; gap:16px; background:rgba(255,255,255,.95);
-      backdrop-filter: blur(10px); padding:12px 20px; border-radius:100px; box-shadow:0 8px 32px rgba(0,0,0,.12);
-      margin-bottom:20px; flex-wrap:wrap; justify-content:center;
-    }
-    .toolbar-group { display:flex; align-items:center; gap:8px; padding:4px 8px; }
-    .toolbar-divider { width:1px; height:32px; background:#e5e7eb; }
     .color-btn {
-      width:36px; height:36px; border-radius:50%; border:3px solid transparent; cursor:pointer; transition:all .2s; position:relative;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
-    .color-btn:hover { transform: scale(1.1); }
-    .color-btn.active { border-color:#1e293b; box-shadow:0 0 0 2px white, 0 0 0 4px #1e293b; }
-    .tool-btn {
-      padding:8px 16px; border:2px solid #e5e7eb; background:white; border-radius:20px; cursor:pointer;
-      font-weight:600; font-size:14px; transition:all .2s; color:#64748b;
+    .color-btn:hover {
+      transform: scale(1.05);
     }
-    .tool-btn:hover { border-color:#cbd5e1; background:#f8fafc; }
-    .tool-btn.active { background:#1e293b; color:white; border-color:#1e293b; }
-    .size-control { display:flex; align-items:center; gap:8px; }
-    #brushSize { width:80px; height:6px; border-radius:3px; outline:none; cursor:pointer; }
-    .action-btn {
-      padding:8px 12px; border:none; background:#f1f5f9; border-radius:16px; cursor:pointer;
-      font-weight:600; font-size:13px; color:#475569; transition:all .2s;
+    .color-btn.active {
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 0 6px rgba(15, 23, 42, 0.9);
+      border-color: rgba(15, 23, 42, 0.9);
     }
-    .action-btn:hover { background:#e2e8f0; }
-    .action-btn:disabled { opacity:.4; cursor:not-allowed; }
-    .action-btn.clear { color:#dc2626; }
-    .action-btn.clear:hover { background:#fee2e2; }
-    .stylus-indicator { padding:8px 16px; background:#dbeafe; color:#1e40af; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; }
-    .stylus-indicator:hover { background:#bfdbfe; }
-    .stylus-indicator.off { background:#f1f5f9; color:#64748b; }
-    canvas {
-      border:3px solid #e5e7eb; border-radius:16px; display:block; cursor:crosshair;
-      max-width:100%; height:auto; background:white; box-shadow: inset 0 2px 4px rgba(0,0,0,.05);
+    .tool-btn.active {
+      background: rgb(15 23 42);
+      color: white;
+      border-color: rgb(15 23 42);
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+    }
+    .stylus-indicator.off {
+      background: rgb(226 232 240);
+      color: rgb(100 116 139);
     }
   </style>
 </head>
-<body>
-  <div id="loginForm">
-    <h1>Student Login</h1>
-    <input type="text" id="usernameInput" placeholder="Your name" maxlength="30" required autofocus />
-    <input type="text" id="sessionInput" placeholder="Session code (e.g., ABC123)" maxlength="10" required value="TEST123" />
-    <button id="loginBtn">Join Session</button>
+  <body class="min-h-screen bg-gradient-to-br from-emerald-100 via-white to-slate-100 flex items-center justify-center p-6">
+  <div
+    id="loginForm"
+    class="w-full max-w-md rounded-3xl bg-white/95 p-10 shadow-[0_30px_70px_rgba(14,116,144,0.35)] backdrop-blur-lg"
+  >
+    <h1 class="text-center text-3xl font-bold text-slate-900">Student Login</h1>
+    <p class="mt-2 text-center text-slate-500">Join your classroom session to start drawing.</p>
+    <div class="mt-8 space-y-5">
+      <div>
+        <label for="usernameInput" class="text-sm font-semibold text-slate-600">Name</label>
+        <input
+          type="text"
+          id="usernameInput"
+          placeholder="Your name"
+          maxlength="30"
+          required
+          autofocus
+          class="mt-2 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-medium text-slate-800 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+        />
+      </div>
+      <div>
+        <label for="sessionInput" class="text-sm font-semibold text-slate-600">Session code</label>
+        <input
+          type="text"
+          id="sessionInput"
+          placeholder="Session code (e.g., ABC123)"
+          maxlength="10"
+          required
+          value="TEST123"
+          class="mt-2 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-medium uppercase tracking-[0.3em] text-slate-800 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+        />
+      </div>
+      <button
+        id="loginBtn"
+        class="w-full rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3.5 text-lg font-semibold text-white shadow-lg shadow-emerald-900/30 transition hover:scale-[1.01] hover:shadow-emerald-900/40 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+      >
+        Join Session
+      </button>
+    </div>
   </div>
 
-  <div id="appContainer">
-    <h1>Student Canvas</h1>
-    <div class="info">Draw with your chosen color. Your teacher can see everything!</div>
-    <div id="status" class="connecting">Connecting...</div>
-    <div id="canvasContainer">
-      <div class="toolbar">
-        <div class="toolbar-group">
-          <div class="color-btn active" style="background:#000000" data-color="#000000" title="Black"></div>
-          <div class="color-btn" style="background:#3b82f6" data-color="#3b82f6" title="Blue"></div>
-          <div class="color-btn" style="background:#22c55e" data-color="#22c55e" title="Green"></div>
-        </div>
-        <div class="toolbar-divider"></div>
-        <div class="toolbar-group">
-          <button class="tool-btn active" data-tool="pen">Pen</button>
-          <button class="tool-btn" data-tool="eraser">Eraser</button>
-        </div>
-        <div class="toolbar-divider"></div>
-        <div class="toolbar-group size-control">
-          <span style="font-size:12px;color:#64748b;font-weight:600;">Size</span>
-          <input type="range" id="brushSize" min="1" max="20" value="3" />
-          <span id="sizeDisplay" style="font-size:12px;color:#1e293b;font-weight:700;min-width:20px;">3</span>
-        </div>
-        <div class="toolbar-divider"></div>
-        <div class="toolbar-group">
-          <button class="action-btn" id="undoBtn" disabled>Undo</button>
-          <button class="action-btn" id="redoBtn" disabled>Redo</button>
-          <button class="action-btn clear" id="clearBtn">Clear</button>
-        </div>
-        <div class="toolbar-divider"></div>
-        <div class="stylus-indicator" id="stylusToggle">Stylus mode (pen only)</div>
+  <div
+    id="appContainer"
+    class="hidden flex h-[min(880px,calc(100vh-3rem))] w-full max-w-[1180px] flex-col justify-between gap-5 rounded-[28px] border border-emerald-100/60 bg-white/80 p-6 text-slate-700 shadow-[0_45px_90px_rgba(15,118,110,0.18)] backdrop-blur"
+  >
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 drop-shadow-sm">Student Canvas</h1>
+        <p class="mt-1 max-w-xl text-sm font-medium text-slate-500">
+          Draw freely with rich colors and tools. Your teacher sees every stroke in real time.
+        </p>
       </div>
+      <div class="flex flex-col items-stretch justify-end gap-3 text-sm font-semibold text-slate-600">
+        <div
+          id="status"
+          class="rounded-2xl px-5 py-2 text-center text-white shadow-inner shadow-emerald-900/10 transition-colors duration-200"
+        >
+          Connecting...
+        </div>
+        <button
+          id="swapToolbarBtn"
+          type="button"
+          class="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+        >
+          Move toolbar to right
+        </button>
+      </div>
+    </div>
 
-      <canvas id="canvas" width="800" height="600"></canvas>
+    <div class="flex flex-1 items-center justify-center overflow-hidden">
+      <div
+        id="workspace"
+        class="flex w-full max-w-[1100px] items-center justify-center gap-6 rounded-[24px] border border-emerald-100 bg-white/60 p-5 shadow-inner"
+      >
+        <div
+          id="toolbarWrapper"
+          class="flex h-[600px] w-[180px] flex-col items-stretch justify-between rounded-3xl border border-slate-200 bg-white/95 p-5 text-slate-700 shadow-[0_25px_55px_rgba(15,23,42,0.18)]"
+        >
+          <div class="space-y-5">
+            <div class="flex flex-col items-center gap-3">
+              <span class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Colors</span>
+              <div id="colorPalette" class="flex flex-col items-center gap-3"></div>
+            </div>
+            <div class="space-y-3">
+              <span class="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Tools</span>
+              <div class="flex flex-col gap-2">
+                <button
+                  class="tool-btn rounded-2xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                  data-tool="pen"
+                >
+                  Pen
+                </button>
+                <button
+                  class="tool-btn rounded-2xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                  data-tool="eraser"
+                >
+                  Eraser
+                </button>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <span class="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Brush Size</span>
+              <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-3 shadow-inner">
+                <input
+                  type="range"
+                  id="brushSize"
+                  min="1"
+                  max="20"
+                  value="3"
+                  class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-500"
+                />
+                <span id="sizeDisplay" class="text-base font-bold text-slate-800">3</span>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div class="flex flex-col gap-2">
+              <button
+                id="undoBtn"
+                class="action-btn rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled
+              >
+                Undo
+              </button>
+              <button
+                id="redoBtn"
+                class="action-btn rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled
+              >
+                Redo
+              </button>
+              <button
+                id="clearBtn"
+                class="action-btn rounded-2xl bg-rose-100 px-4 py-2 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-200"
+              >
+                Clear
+              </button>
+            </div>
+            <button
+              id="stylusToggle"
+              class="stylus-indicator w-full rounded-2xl bg-blue-100 px-4 py-2 text-center text-sm font-semibold text-blue-700 transition hover:bg-blue-200"
+            >
+              Stylus mode (pen only)
+            </button>
+          </div>
+        </div>
+        <div class="flex h-[600px] items-center justify-center rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_25px_55px_rgba(15,23,42,0.12)]">
+          <canvas
+            id="canvas"
+            width="800"
+            height="600"
+            class="h-[600px] w-[800px] rounded-3xl border-2 border-slate-200 bg-white shadow-inner shadow-slate-900/5"
+          ></canvas>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -142,7 +210,7 @@
     const sessionInput = document.getElementById('sessionInput');
     const loginBtn = document.getElementById('loginBtn');
 
-    const colorBtns = document.querySelectorAll('.color-btn');
+    const colorPaletteEl = document.getElementById('colorPalette');
     const toolBtns = document.querySelectorAll('.tool-btn');
     const brushSizeInput = document.getElementById('brushSize');
     const sizeDisplay = document.getElementById('sizeDisplay');
@@ -150,6 +218,19 @@
     const redoBtn = document.getElementById('redoBtn');
     const clearBtn = document.getElementById('clearBtn');
     const stylusToggle = document.getElementById('stylusToggle');
+    const swapToolbarBtn = document.getElementById('swapToolbarBtn');
+    const workspace = document.getElementById('workspace');
+
+    const COLOR_PRESETS = [
+      { label: 'Ink', value: '#111827' },
+      { label: 'Ocean', value: '#2563eb' },
+      { label: 'Magenta', value: '#db2777' },
+      { label: 'Emerald', value: '#10b981' },
+      { label: 'Sunrise', value: '#f97316' },
+      { label: 'Gold', value: '#facc15' }
+    ];
+
+    const statusBaseClasses = statusEl.className;
 
     canvas.style.touchAction = 'none';
 
@@ -178,7 +259,7 @@
     let username = '';
     let sessionCode = '';
 
-    let currentColor = '#000000';
+    let currentColor = COLOR_PRESETS[0].value;
     let currentTool = 'pen';
     let brushSize = 3;
     let stylusOnly = true;
@@ -204,22 +285,45 @@
     /* ----------------- UI wiring ----------------- */
     function setStatus(kind, text) {
       statusEl.textContent = text;
-      statusEl.className = '';
-      if (kind) statusEl.classList.add(kind);
+      statusEl.className = statusBaseClasses;
+      if (kind === 'error') {
+        statusEl.classList.add('bg-rose-500/90');
+      } else if (kind === 'connecting') {
+        statusEl.classList.add('bg-amber-500/90');
+      } else {
+        statusEl.classList.add('bg-emerald-500/90');
+      }
     }
     setStatus('connecting', 'Waiting to connect');
 
-    colorBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        colorBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentColor = btn.dataset.color;
-        if (currentTool === 'eraser') {
-          currentTool = 'pen';
-          updateToolButtons();
-        }
+    function updateColorSelection() {
+      const buttons = colorPaletteEl.querySelectorAll('.color-btn');
+      buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === currentColor));
+    }
+
+    function renderColorButtons() {
+      colorPaletteEl.innerHTML = '';
+      COLOR_PRESETS.forEach(preset => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'color-btn flex h-12 w-12 items-center justify-center rounded-full border-4 border-transparent shadow-sm';
+        btn.dataset.color = preset.value;
+        btn.title = preset.label;
+        btn.setAttribute('aria-label', preset.label);
+        btn.style.background = preset.value;
+        btn.addEventListener('click', () => {
+          currentColor = preset.value;
+          updateColorSelection();
+          if (currentTool === 'eraser') {
+            currentTool = 'pen';
+            updateToolButtons();
+          }
+        });
+        colorPaletteEl.appendChild(btn);
       });
-    });
+      updateColorSelection();
+    }
+    renderColorButtons();
     function updateToolButtons() {
       toolBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.tool === currentTool));
     }
@@ -239,6 +343,24 @@
       stylusToggle.classList.toggle('off', !stylusOnly);
       stylusToggle.textContent = stylusOnly ? 'Stylus mode (pen only)' : 'All inputs';
     });
+
+    let toolbarOnLeft = true;
+    function updateToolbarPosition() {
+      if (toolbarOnLeft) {
+        workspace.classList.remove('flex-row-reverse');
+        swapToolbarBtn.textContent = 'Move toolbar to right';
+        swapToolbarBtn.setAttribute('aria-pressed', 'false');
+      } else {
+        workspace.classList.add('flex-row-reverse');
+        swapToolbarBtn.textContent = 'Move toolbar to left';
+        swapToolbarBtn.setAttribute('aria-pressed', 'true');
+      }
+    }
+    swapToolbarBtn.addEventListener('click', () => {
+      toolbarOnLeft = !toolbarOnLeft;
+      updateToolbarPosition();
+    });
+    updateToolbarPosition();
 
     undoBtn.addEventListener('click', undo);
     redoBtn.addEventListener('click', redo);
@@ -674,14 +796,14 @@
         if (payload.target !== username) return;
         const s = payload.stroke;
         if (!s?.id) return;
-        addStroke({ id: s.id, color: s.color || '#111827', size: s.size || 3, points: s.points || [] });
+        addStroke({ id: s.id, color: s.color || '#111827', size: s.size || 3, points: s.points || [], isTeacher: true });
       });
 
       ch.on('broadcast', { event: 'teacher_state_change' }, ({ payload }) => {
         if (payload.target !== username) return;
         (payload.added || []).forEach(a => {
           if (!strokes.find(s => s.id === a.id)) {
-            strokes.push({ id: a.id, color: a.color || '#111827', size: a.size || 3, points: a.points || [] });
+            strokes.push({ id: a.id, color: a.color || '#111827', size: a.size || 3, points: a.points || [], isTeacher: true });
             historyStep = strokes.length - 1;
           }
         });
@@ -741,8 +863,8 @@
         alert('Please enter both name and session code');
         return;
       }
-      loginForm.style.display = 'none';
-      appContainer.style.display = 'flex';
+      loginForm.classList.add('hidden');
+      appContainer.classList.remove('hidden');
       loadFromSession();
       resizeCanvasForDPR();
       await setupSupabase();
