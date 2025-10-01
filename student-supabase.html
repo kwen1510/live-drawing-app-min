@@ -280,7 +280,7 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      redrawCanvas();
+      renderAll();
     }
 
     function fitCanvasToStage() {
@@ -315,22 +315,17 @@
     let brushSize = 3;
     let stylusOnly = true;
 
-    // timeline
-    let strokes = [];         // [{id,color,size,points:[{x,y}]}] and erase actions {type:'erase',deletedIds:[]}
-    let historyStep = -1;
-
-    // draw session
-    let activePointerId = null;
-    let activeStroke = null;  // {id,color,size,points:[]}
-    let liveStrokeActive = false;
-
-    // eraser
-    let isErasing = false;
-    let lastErasePoint = null;
-    let erasedStrokes = [];   // strokes deleted during current drag
-
-    const MIN_SAMPLE_DISTANCE = 0.45;
-    const INTERPOLATION_STEP = 3.2;
+    const state = {
+      drawing: false,
+      pointerId: null,
+      currentPath: null,
+      strokes: [],
+      undoStack: [],
+      redoStack: [],
+      eraseBatch: null,
+      lastErasePoint: null,
+      eraseBefore: null
+    };
 
     /* ----------------- UI wiring ----------------- */
     function setStatus(kind, text) {
@@ -419,233 +414,235 @@
     clearBtn.addEventListener('click', clearCanvas);
 
     /* ----------------- Session persistence ----------------- */
+    function clonePath(path) {
+      return {
+        id: path.id,
+        color: path.color,
+        size: path.size,
+        points: (path.points || []).map(pt => ({ x: pt.x, y: pt.y })),
+        isTeacher: !!path.isTeacher
+      };
+    }
+
+    function clonePaths(list) {
+      return (list || []).map(clonePath);
+    }
+
     function saveToSession() {
+      if (!username) return;
       try {
         sessionStorage.setItem('student_drawing_' + username, JSON.stringify({
-          strokes, historyStep, username, timestamp: Date.now()
+          strokes: clonePaths(state.strokes),
+          username,
+          timestamp: Date.now()
         }));
       } catch {}
     }
     function loadFromSession() {
+      if (!username) return;
       try {
         const raw = sessionStorage.getItem('student_drawing_' + username);
         if (!raw) return;
         const data = JSON.parse(raw);
-        strokes = data.strokes || [];
-        historyStep = Number.isFinite(data.historyStep) ? data.historyStep : -1;
-        redrawCanvas();
+        state.strokes = clonePaths(data.strokes || []);
+        renderAll();
+        state.undoStack.length = 0;
+        state.redoStack.length = 0;
         updateHistoryButtons();
       } catch {}
     }
 
     /* ----------------- Timeline helpers ----------------- */
-    function addStroke(stroke) {
-      if (historyStep < strokes.length - 1) strokes.length = historyStep + 1;
-      // clone points lightly
-      if (!stroke.type) {
-        stroke = { ...stroke, points: stroke.points.map(p => ({ x: p.x, y: p.y })) };
-      }
-      strokes.push(stroke);
-      historyStep = strokes.length - 1;
-      redrawCanvas();
-      updateHistoryButtons();
-      saveToSession();
-    }
-
     function updateHistoryButtons() {
-      undoBtn.disabled = historyStep < 0;
-      redoBtn.disabled = historyStep >= strokes.length - 1;
+      undoBtn.disabled = state.undoStack.length === 0;
+      redoBtn.disabled = state.redoStack.length === 0;
     }
 
-    function getVisibleStrokeIds() {
-      const deleted = new Set();
-      const visible = new Set();
-      for (let i = 0; i <= historyStep; i++) {
-        const s = strokes[i];
-        if (!s) continue;
-        if (s.type === 'erase') s.deletedIds.forEach(id => deleted.add(id));
-        else visible.add(s.id);
-      }
-      deleted.forEach(id => visible.delete(id));
-      return visible;
+    function buildStateSnapshot(list) {
+      return (list || []).map(item => ({
+        id: item.id,
+        color: item.color,
+        size: item.size,
+        points: (item.points || []).map(pt => ({ x: pt.x, y: pt.y }))
+      }));
     }
 
-    function computeStateDiff(oldSet, newSet) {
-      const added = [], removed = [];
-      newSet.forEach(id => {
-        if (!oldSet.has(id)) {
-          const s = strokes.find(x => x.id === id && !x.type);
-          if (s) added.push({ id: s.id, color: s.color, size: s.size, points: s.points });
-        }
+    function broadcastDiff(prevSnapshot, nextSnapshot) {
+      if (!channel) return;
+      const prevMap = new Map(prevSnapshot.map(s => [s.id, s]));
+      const nextMap = new Map(nextSnapshot.map(s => [s.id, s]));
+      const added = [];
+      const removed = [];
+      nextMap.forEach((value, key) => {
+        if (!prevMap.has(key)) added.push(value);
       });
-      oldSet.forEach(id => { if (!newSet.has(id)) removed.push(id); });
-      return { added, removed };
+      prevMap.forEach((value, key) => {
+        if (!nextMap.has(key)) removed.push(key);
+      });
+      if (added.length || removed.length) {
+        channel.send({
+          type: 'broadcast',
+          event: 'student_state_change',
+          payload: { username, added, removed }
+        });
+      }
     }
 
     function undo() {
-      if (historyStep < 0) return;
-      const oldV = getVisibleStrokeIds();
-      historyStep--;
-      const newV = getVisibleStrokeIds();
-      redrawCanvas(); updateHistoryButtons(); saveToSession();
-      const diff = computeStateDiff(oldV, newV);
-      if (channel && (diff.added.length || diff.removed.length)) {
-        channel.send({ type:'broadcast', event:'student_state_change', payload:{ username, added: diff.added, removed: diff.removed }});
+      if (!state.undoStack.length) return;
+      const prevSnapshot = buildStateSnapshot(state.strokes);
+      const action = state.undoStack.pop();
+
+      if (action.type === 'draw') {
+        const path = action.path;
+        let idx = state.strokes.lastIndexOf(path);
+        if (idx === -1 && path?.id) {
+          idx = state.strokes.findIndex(s => s.id === path.id);
+        }
+        if (idx !== -1) {
+          state.strokes.splice(idx, 1);
+          state.redoStack.push({ type: 'draw', path });
+        }
       }
+
+      else if (action.type === 'erase') {
+        const entries = action.entries || [];
+        for (let i = entries.length - 1; i >= 0; i--) {
+          const { path, index } = entries[i];
+          const insertAt = Number.isFinite(index) ? Math.min(index, state.strokes.length) : state.strokes.length;
+          state.strokes.splice(insertAt, 0, path);
+        }
+        state.redoStack.push({ type: 'erase', entries });
+      }
+
+      else if (action.type === 'clear') {
+        const prev = action.prev || [];
+        state.redoStack.push({ type: 'clear', prev: clonePaths(state.strokes) });
+        state.strokes = clonePaths(prev);
+      }
+
+      renderAll();
+      updateHistoryButtons();
+      saveToSession();
+      const nextSnapshot = buildStateSnapshot(state.strokes);
+      broadcastDiff(prevSnapshot, nextSnapshot);
     }
 
     function redo() {
-      if (historyStep >= strokes.length - 1) return;
-      const oldV = getVisibleStrokeIds();
-      historyStep++;
-      const newV = getVisibleStrokeIds();
-      redrawCanvas(); updateHistoryButtons(); saveToSession();
-      const diff = computeStateDiff(oldV, newV);
-      if (channel && (diff.added.length || diff.removed.length)) {
-        channel.send({ type:'broadcast', event:'student_state_change', payload:{ username, added: diff.added, removed: diff.removed }});
+      if (!state.redoStack.length) return;
+      const prevSnapshot = buildStateSnapshot(state.strokes);
+      const action = state.redoStack.pop();
+
+      if (action.type === 'draw') {
+        const path = action.path;
+        state.strokes.push(path);
+        state.undoStack.push({ type: 'draw', path });
       }
+
+      else if (action.type === 'erase') {
+        const performed = [];
+        (action.entries || []).forEach(({ path, index }) => {
+          let idx = state.strokes.indexOf(path);
+          if (idx === -1 && path?.id) {
+            idx = state.strokes.findIndex(s => s.id === path.id);
+          }
+          if (idx !== -1) {
+            state.strokes.splice(idx, 1);
+            performed.push({ path, index: idx });
+          } else if (Number.isFinite(index) && index >= 0 && index < state.strokes.length) {
+            const [removed] = state.strokes.splice(index, 1);
+            if (removed) performed.push({ path: removed, index });
+          }
+        });
+        state.undoStack.push({ type: 'erase', entries: performed });
+      }
+
+      else if (action.type === 'clear') {
+        const snapshot = clonePaths(state.strokes);
+        state.strokes = [];
+        state.undoStack.push({ type: 'clear', prev: snapshot });
+      }
+
+      renderAll();
+      updateHistoryButtons();
+      saveToSession();
+      const nextSnapshot = buildStateSnapshot(state.strokes);
+      broadcastDiff(prevSnapshot, nextSnapshot);
     }
 
     function clearCanvas() {
-      if (historyStep < strokes.length - 1) strokes.length = historyStep + 1;
-      const visible = getVisibleStrokeIds();
-      if (!visible.size) { redrawCanvas(); return; }
-      const deletedIds = Array.from(visible);
-      strokes.push({ type: 'erase', deletedIds });
-      historyStep = strokes.length - 1;
-      redrawCanvas(); updateHistoryButtons(); saveToSession();
-      const diff = computeStateDiff(visible, getVisibleStrokeIds());
-      if (channel && (diff.added.length || diff.removed.length)) {
-        channel.send({ type:'broadcast', event:'student_state_change', payload:{ username, added: diff.added, removed: diff.removed }});
+      if (!state.strokes.length) {
+        renderAll();
+        return;
       }
-      channel?.send({ type:'broadcast', event:'student_clear', payload:{ username }});
+      const prevSnapshot = buildStateSnapshot(state.strokes);
+      const snapshot = clonePaths(state.strokes);
+      state.strokes = [];
+      state.undoStack.push({ type: 'clear', prev: snapshot });
+      state.redoStack.length = 0;
+      renderAll();
+      updateHistoryButtons();
+      saveToSession();
+      broadcastDiff(prevSnapshot, []);
+      channel?.send({ type: 'broadcast', event: 'student_clear', payload: { username } });
     }
 
     /* ----------------- Drawing ----------------- */
-    function drawDotPath(targetCtx, point, size, color) {
-      if (!point) return;
-      targetCtx.beginPath();
-      const radius = Math.max(0.25, size / 2);
-      targetCtx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-      targetCtx.fillStyle = color;
-      targetCtx.fill();
+    function drawDot(pt, size, color) {
+      if (!pt) return;
+      const radius = Math.max(0.45 * size, Math.min(0.8 * size, 0.5 * size));
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
 
-    function drawSmoothStrokePath(targetCtx, points, color, size) {
-      if (!points?.length) return;
-
-      const strokeColor = color || '#111827';
-      const strokeSize = Math.max(0.5, Number.isFinite(size) ? size : 3);
-
-      targetCtx.save();
-      targetCtx.lineCap = 'round';
-      targetCtx.lineJoin = 'round';
-      targetCtx.strokeStyle = strokeColor;
-      targetCtx.lineWidth = strokeSize;
-      targetCtx.fillStyle = strokeColor;
-
-      if (points.length === 1) {
-        drawDotPath(targetCtx, points[0], strokeSize, strokeColor);
-        targetCtx.restore();
-        return;
-      }
-
-      if (points.length === 2) {
-        targetCtx.beginPath();
-        targetCtx.moveTo(points[0].x, points[0].y);
-        targetCtx.lineTo(points[1].x, points[1].y);
-        targetCtx.stroke();
-        drawDotPath(targetCtx, points[1], strokeSize, strokeColor);
-        targetCtx.restore();
-        return;
-      }
-
-      targetCtx.beginPath();
-      targetCtx.moveTo(points[0].x, points[0].y);
-
-      for (let i = 0; i < points.length - 1; i++) {
-        const p0 = i === 0 ? points[0] : points[i - 1];
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        const p3 = i + 2 < points.length ? points[i + 2] : points[i + 1];
-
-        const cp1x = p1.x + (p2.x - p0.x) / 6;
-        const cp1y = p1.y + (p2.y - p0.y) / 6;
-        const cp2x = p2.x - (p3.x - p1.x) / 6;
-        const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-        targetCtx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-      }
-
-      targetCtx.stroke();
-      drawDotPath(targetCtx, points[points.length - 1], strokeSize, strokeColor);
-      targetCtx.restore();
+    function strokeLiveBegin(pt, size, color) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = color;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = size;
+      ctx.beginPath();
+      ctx.moveTo(pt.x, pt.y);
     }
 
-    function appendPointWithInterpolation(array, point) {
-      if (!point) return;
-      const last = array[array.length - 1];
-      if (last) {
-        const dx = point.x - last.x;
-        const dy = point.y - last.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < MIN_SAMPLE_DISTANCE) {
-          last.x += dx * 0.5;
-          last.y += dy * 0.5;
-          return;
-        }
-        const steps = Math.min(6, Math.floor(dist / INTERPOLATION_STEP));
-        for (let i = 1; i < steps; i++) {
-          const t = i / steps;
-          array.push({
-            x: last.x + dx * t,
-            y: last.y + dy * t
-          });
-        }
-      }
-      array.push(point);
+    function strokeLiveTo(pt) {
+      ctx.lineTo(pt.x, pt.y);
+      ctx.stroke();
     }
 
-    function appendSamples(array, samples) {
-      const added = [];
-      samples.forEach(sample => {
-        const before = array.length;
-        appendPointWithInterpolation(array, { x: sample.x, y: sample.y });
-        if (array.length > before) {
-          for (let i = before; i < array.length; i++) added.push(array[i]);
-        }
-      });
-      return added;
+    function strokeLiveEnd() {
+      ctx.restore();
     }
 
-    function getCoalescedSamples(e) {
-      const list = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-      return list.map(item => getCanvasPoint(item));
-    }
-
-    function redrawCanvas() {
+    function renderAll() {
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-      const deleted = new Set();
-      for (let i = 0; i <= historyStep; i++) {
-        const a = strokes[i];
-        if (a?.type === 'erase') a.deletedIds.forEach(id => deleted.add(id));
-      }
-      if (isErasing && erasedStrokes.length) erasedStrokes.forEach(s => deleted.add(s.id));
-
-      for (let i = 0; i <= historyStep; i++) {
-        const s = strokes[i];
-        if (!s || s.type === 'erase') continue;
-        if (deleted.has(s.id)) continue;
-        drawStroke(s);
-      }
-    }
-
-    function drawStroke(stroke) {
-      if (!stroke.points?.length) return;
-      ctx.globalCompositeOperation = 'source-over';
-      drawSmoothStrokePath(ctx, stroke.points, stroke.color, stroke.size);
+      state.strokes.forEach(path => {
+        const pts = path.points || [];
+        if (!pts.length) return;
+        if (pts.length === 1) {
+          drawDot(pts[0], path.size || brushSize, path.color || '#111827');
+          return;
+        }
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = path.color || '#111827';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = path.size || brushSize;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x, pts[i].y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      });
     }
 
     function getCanvasPoint(ev) {
@@ -658,194 +655,207 @@
       };
     }
 
-    function distToSegmentSquared(px, py, x1, y1, x2, y2) {
-      const dx = x2 - x1, dy = y2 - y1;
-      const len2 = dx*dx + dy*dy;
-      if (len2 === 0) return (px - x1)**2 + (py - y1)**2;
-      let t = ((px-x1)*dx + (py-y1)*dy) / len2;
+    function dist(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.hypot(dx, dy);
+    }
+
+    function distToSeg(p, a, b) {
+      const vx = b.x - a.x;
+      const vy = b.y - a.y;
+      const wx = p.x - a.x;
+      const wy = p.y - a.y;
+      const c = vx * vx + vy * vy;
+      if (!c) return dist(p, a);
+      let t = (wx * vx + wy * vy) / c;
       t = Math.max(0, Math.min(1, t));
-      const qx = x1 + t*dx, qy = y1 + t*dy;
-      return (px - qx)**2 + (py - qy)**2;
+      const cx = a.x + t * vx;
+      const cy = a.y + t * vy;
+      return Math.hypot(p.x - cx, p.y - cy);
     }
 
-    function deleteStrokesInPath(x, y) {
-      const eraserRadius = Math.max(30, brushSize * 3);
-      const deletedNow = new Set();
-
-      const alreadyDeleted = new Set();
-      for (let i = 0; i <= historyStep; i++) {
-        const a = strokes[i];
-        if (a?.type === 'erase') a.deletedIds.forEach(id => alreadyDeleted.add(id));
-      }
-
-      for (let i = historyStep; i >= 0; i--) {
-        const s = strokes[i];
-        if (!s || s.type === 'erase') continue;
-        if (alreadyDeleted.has(s.id)) continue;
-        if (erasedStrokes.find(e => e.id === s.id)) continue;
-
-        let hit = false;
-        for (let j = 0; j < s.points.length; j++) {
-          const p = s.points[j];
-          const dist = Math.hypot(p.x - x, p.y - y);
-          if (dist < eraserRadius + (s.size || 3) / 2) { hit = true; break; }
-          if (j > 0) {
-            const q = s.points[j - 1];
-            const d2 = distToSegmentSquared(x, y, q.x, q.y, p.x, p.y);
-            if (d2 < (eraserRadius + (s.size || 3) / 2) ** 2) { hit = true; break; }
-          }
+    function hitStrokeIndex(pt) {
+      for (let i = state.strokes.length - 1; i >= 0; i--) {
+        const path = state.strokes[i];
+        const pts = path.points || [];
+        if (!pts.length) continue;
+        const size = path.size || brushSize;
+        const pad = Math.max(size * 0.6, 6);
+        if (pts.length === 1) {
+          if (dist(pt, pts[0]) <= pad) return i;
+          continue;
         }
-        if (hit) {
-          deletedNow.add(s.id);
-          erasedStrokes.push(s);
-          channel?.send({ type:'broadcast', event:'student_stroke_delete', payload:{ username, strokeId: s.id }});
+        for (let j = 1; j < pts.length; j++) {
+          if (distToSeg(pt, pts[j - 1], pts[j]) <= pad) return i;
         }
       }
-      if (deletedNow.size) redrawCanvas();
+      return -1;
     }
 
-    canvas.addEventListener('pointerdown', (e) => {
-      if (stylusOnly && e.pointerType !== 'pen') return;
+    function eraseAt(pt) {
+      if (!state.eraseBatch) return;
+      const idx = hitStrokeIndex(pt);
+      if (idx !== -1) {
+        const [removed] = state.strokes.splice(idx, 1);
+        if (!removed) return;
+        state.eraseBatch.push({ path: removed, index: idx });
+        renderAll();
+        saveToSession();
+        channel?.send({ type: 'broadcast', event: 'student_stroke_delete', payload: { username, strokeId: removed.id } });
+      }
+    }
 
+    function finishErase() {
+      if (!state.eraseBatch) return;
+      const batch = state.eraseBatch.filter(entry => entry && entry.path);
+      if (batch.length) {
+        state.undoStack.push({ type: 'erase', entries: batch });
+        state.redoStack.length = 0;
+        updateHistoryButtons();
+        saveToSession();
+        const nextSnapshot = buildStateSnapshot(state.strokes);
+        if (state.eraseBefore) {
+          broadcastDiff(state.eraseBefore, nextSnapshot);
+        }
+      }
+      state.eraseBatch = null;
+      state.lastErasePoint = null;
+      state.eraseBefore = null;
+    }
+
+    function startStroke(e) {
+      if (stylusOnly && e.pointerType && e.pointerType !== 'pen') return;
       e.preventDefault();
-      activePointerId = e.pointerId;
-      try { canvas.setPointerCapture(activePointerId); } catch {}
-
-      const p = getCanvasPoint(e);
+      state.pointerId = e.pointerId ?? null;
+      state.drawing = true;
+      if (state.pointerId != null) {
+        try { canvas.setPointerCapture(state.pointerId); } catch {}
+      }
+      const pt = getCanvasPoint(e);
 
       if (currentTool === 'eraser') {
-        isErasing = true;
-        erasedStrokes = [];
-        lastErasePoint = p;
-        deleteStrokesInPath(p.x, p.y);
+        state.eraseBefore = buildStateSnapshot(state.strokes);
+        state.eraseBatch = [];
+        state.lastErasePoint = pt;
+        eraseAt(pt);
         return;
       }
 
-      activeStroke = {
+      const stroke = {
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         color: currentColor,
         size: brushSize,
-        points: [p]
+        points: [pt]
       };
+      state.currentPath = stroke;
+      strokeLiveBegin(pt, stroke.size, stroke.color);
+      channel?.send({ type: 'broadcast', event: 'student_stroke_start', payload: { username, stroke: { id: stroke.id, color: stroke.color, size: stroke.size } } });
+    }
 
-      liveStrokeActive = true;
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = activeStroke.color;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = activeStroke.size;
-      drawDotPath(ctx, p, activeStroke.size, activeStroke.color);
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-
-      channel?.send({ type:'broadcast', event:'student_stroke_start', payload:{ username, stroke:{ id: activeStroke.id, color: activeStroke.color, size: activeStroke.size } }});
-    });
-
-    function handlePointerMove(e) {
-      if (activePointerId !== e.pointerId) return;
-
-      if (isErasing) {
-        e.preventDefault();
-        const list = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-        for (const ce of list) {
-          const p = getCanvasPoint(ce);
-          if (lastErasePoint) {
-            const dist = Math.hypot(p.x - lastErasePoint.x, p.y - lastErasePoint.y);
-            const steps = Math.max(1, Math.floor(dist / 8));
-            for (let i = 1; i <= steps; i++) {
-              const t = i / steps;
-              deleteStrokesInPath(
-                lastErasePoint.x + (p.x - lastErasePoint.x) * t,
-                lastErasePoint.y + (p.y - lastErasePoint.y) * t
-              );
-            }
-          } else {
-            deleteStrokesInPath(p.x, p.y);
-          }
-          lastErasePoint = p;
-        }
-        return;
-      }
-
-      if (!activeStroke) return;
-
+    function moveStroke(e) {
+      if (!state.drawing) return;
+      if (state.pointerId != null && e.pointerId != null && e.pointerId !== state.pointerId) return;
       e.preventDefault();
-      const samples = getCoalescedSamples(e);
-      if (!samples.length) return;
+      const pt = getCanvasPoint(e);
 
-      const added = appendSamples(activeStroke.points, samples);
-      if (!added.length) return;
-
-      added.forEach(pt => {
-        ctx.lineTo(pt.x, pt.y);
-      });
-      ctx.stroke();
-
-      const last = activeStroke.points[activeStroke.points.length - 1];
-      if (last) {
-        channel?.send({ type:'broadcast', event:'student_stroke_point', payload:{ username, strokeId: activeStroke.id, x: last.x, y: last.y }});
-      }
-    }
-
-    canvas.addEventListener('pointermove', handlePointerMove, { passive: false });
-
-    function finalizePointer(e) {
-      if (activePointerId !== e.pointerId) return;
-
-      if (isErasing) {
-        isErasing = false;
-        lastErasePoint = null;
-        if (erasedStrokes.length) {
-          const eraseAction = {
-            id: `${Date.now()}-erase-${Math.random().toString(16).slice(2)}`,
-            type: 'erase',
-            deletedStrokes: erasedStrokes.map(s => ({ ...s, points: s.points.map(p => ({x:p.x, y:p.y})) })),
-            deletedIds: erasedStrokes.map(s => s.id)
-          };
-          addStroke(eraseAction);
+      if (currentTool === 'eraser' && state.eraseBatch) {
+        if (state.lastErasePoint) {
+          const prev = state.lastErasePoint;
+          const distStep = Math.hypot(pt.x - prev.x, pt.y - prev.y);
+          const steps = Math.max(1, Math.floor(distStep / 8));
+          for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            eraseAt({
+              x: prev.x + (pt.x - prev.x) * t,
+              y: prev.y + (pt.y - prev.y) * t
+            });
+          }
+        } else {
+          eraseAt(pt);
         }
-        try { canvas.releasePointerCapture(activePointerId); } catch {}
-        activePointerId = null;
+        state.lastErasePoint = pt;
         return;
       }
 
-      if (!activeStroke) {
-        try { canvas.releasePointerCapture(activePointerId); } catch {}
-        activePointerId = null;
-        if (liveStrokeActive) {
-          ctx.restore();
-          liveStrokeActive = false;
-          redrawCanvas();
-        }
+      if (!state.currentPath) return;
+      state.currentPath.points.push(pt);
+      strokeLiveTo(pt);
+      channel?.send({ type: 'broadcast', event: 'student_stroke_point', payload: { username, strokeId: state.currentPath.id, x: pt.x, y: pt.y } });
+    }
+
+    function endStroke(e) {
+      if (!state.drawing) return;
+      if (state.pointerId != null && e.pointerId != null && e.pointerId !== state.pointerId) return;
+      e.preventDefault();
+      if (state.pointerId != null) {
+        try { canvas.releasePointerCapture(state.pointerId); } catch {}
+      }
+
+      if (currentTool === 'eraser') {
+        finishErase();
+        state.drawing = false;
+        state.pointerId = null;
         return;
       }
 
-      const finalized = {
-        id: activeStroke.id,
-        color: activeStroke.color,
-        size: activeStroke.size,
-        points: activeStroke.points.map(p => ({ x:p.x, y:p.y }))
-      };
-
-      if (liveStrokeActive) {
-        ctx.restore();
-        liveStrokeActive = false;
+      const path = state.currentPath;
+      if (path) {
+        if (path.points.length === 1) {
+          drawDot(path.points[0], path.size, path.color);
+        }
+        strokeLiveEnd();
+        state.strokes.push(path);
+        state.undoStack.push({ type: 'draw', path });
+        state.redoStack.length = 0;
+        renderAll();
+        updateHistoryButtons();
+        saveToSession();
+        channel?.send({
+          type: 'broadcast',
+          event: 'student_stroke_end',
+          payload: {
+            username,
+            stroke: {
+              id: path.id,
+              color: path.color,
+              size: path.size,
+              points: path.points.map(p => ({ x: p.x, y: p.y }))
+            }
+          }
+        });
       }
 
-      activeStroke = null;
-      try { canvas.releasePointerCapture(activePointerId); } catch {}
-      activePointerId = null;
-
-      addStroke(finalized);
-      channel?.send({ type:'broadcast', event:'student_stroke_end', payload:{ username, stroke: finalized }});
+      state.currentPath = null;
+      state.drawing = false;
+      state.pointerId = null;
     }
 
-    canvas.addEventListener('pointerup', finalizePointer);
-    canvas.addEventListener('pointercancel', finalizePointer);
-    canvas.addEventListener('pointerleave', (e) => {
-      if (activePointerId === e.pointerId) finalizePointer(e);
-    });
+    function cancelStroke(e) {
+      if (!state.drawing) return;
+      if (state.pointerId != null && e.pointerId != null && e.pointerId !== state.pointerId) return;
+      e.preventDefault();
+      if (state.pointerId != null) {
+        try { canvas.releasePointerCapture(state.pointerId); } catch {}
+      }
+
+      if (currentTool === 'eraser') {
+        finishErase();
+      } else if (state.currentPath) {
+        strokeLiveEnd();
+        state.currentPath = null;
+        renderAll();
+      }
+
+      state.drawing = false;
+      state.pointerId = null;
+    }
+
+    canvas.addEventListener('pointerdown', startStroke, { passive: false });
+    canvas.addEventListener('pointermove', moveStroke, { passive: false });
+    canvas.addEventListener('pointerup', endStroke, { passive: false });
+    canvas.addEventListener('pointercancel', cancelStroke, { passive: false });
+    canvas.addEventListener('pointerleave', cancelStroke, { passive: false });
 
     /* ----------------- Supabase wiring ----------------- */
     function wireTeacherEvents(ch) {
@@ -853,42 +863,63 @@
         if (payload.target !== username) return;
         const s = payload.stroke;
         if (!s?.id) return;
-        addStroke({ id: s.id, color: s.color || '#111827', size: s.size || 3, points: s.points || [], isTeacher: true });
+        const path = {
+          id: s.id,
+          color: s.color || '#111827',
+          size: s.size || 3,
+          points: (s.points || []).map(p => ({ x: p.x, y: p.y })),
+          isTeacher: true
+        };
+        const existing = state.strokes.findIndex(item => item.id === path.id);
+        if (existing === -1) state.strokes.push(path);
+        else state.strokes[existing] = path;
+        renderAll();
+        updateHistoryButtons();
+        saveToSession();
       });
 
       ch.on('broadcast', { event: 'teacher_state_change' }, ({ payload }) => {
         if (payload.target !== username) return;
         (payload.added || []).forEach(a => {
-          if (!strokes.find(s => s.id === a.id)) {
-            strokes.push({ id: a.id, color: a.color || '#111827', size: a.size || 3, points: a.points || [], isTeacher: true });
-            historyStep = strokes.length - 1;
+          if (!a?.id) return;
+          if (!state.strokes.find(s => s.id === a.id)) {
+            state.strokes.push({
+              id: a.id,
+              color: a.color || '#111827',
+              size: a.size || 3,
+              points: (a.points || []).map(p => ({ x: p.x, y: p.y })),
+              isTeacher: true
+            });
           }
         });
         (payload.removed || []).forEach(id => {
-          const idx = strokes.findIndex(s => s.id === id);
+          const idx = state.strokes.findIndex(s => s.id === id);
           if (idx >= 0) {
-            strokes.splice(idx, 1);
-            historyStep = Math.min(historyStep, strokes.length - 1);
+            state.strokes.splice(idx, 1);
           }
         });
-        redrawCanvas(); updateHistoryButtons(); saveToSession();
+        renderAll();
+        updateHistoryButtons();
+        saveToSession();
       });
 
       ch.on('broadcast', { event: 'teacher_stroke_delete' }, ({ payload }) => {
         if (payload.target !== username) return;
-        const idx = strokes.findIndex(s => s.id === payload.strokeId);
+        const idx = state.strokes.findIndex(s => s.id === payload.strokeId);
         if (idx >= 0) {
-          strokes.splice(idx, 1);
-          historyStep = Math.min(historyStep, strokes.length - 1);
-          redrawCanvas(); updateHistoryButtons(); saveToSession();
+          state.strokes.splice(idx, 1);
+          renderAll();
+          updateHistoryButtons();
+          saveToSession();
         }
       });
 
       ch.on('broadcast', { event: 'teacher_clear' }, ({ payload }) => {
         if (payload.target !== username) return;
-        strokes = strokes.filter(s => s.type === 'erase' || !s.isTeacher); // remove teacher-only items; keep erase actions if any
-        historyStep = strokes.length - 1;
-        redrawCanvas(); updateHistoryButtons(); saveToSession();
+        state.strokes = state.strokes.filter(s => !s.isTeacher);
+        renderAll();
+        updateHistoryButtons();
+        saveToSession();
       });
     }
 
