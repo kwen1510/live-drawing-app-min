@@ -23,6 +23,11 @@
         },
       };
     </script>
+    <script>
+      window.SUPABASE_URL = "https://eytswszeopdxmtxxbkrb.supabase.co";
+      window.SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhpY3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -431,13 +436,14 @@
       </div>
     </div>
 
-    <script>
-      window.SUPABASE_URL = "https://eytswszeopdxmtxxbkrb.supabase.co";
-      window.SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhpY3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
-    </script>
     <script type="module">
       import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm";
+
+      const SUPABASE_URL = window.SUPABASE_URL;
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        throw new Error("Missing Supabase credentials. Check the inline configuration script.");
+      }
 
       const studentsDiv = document.getElementById("students");
       const emptyState = document.getElementById("emptyState");
@@ -734,19 +740,10 @@
           cleanupChannel();
           connectionReady = false;
 
-          if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
-            console.error("Missing Supabase configuration.");
-            handleConnectionError(
-              "Missing Supabase credentials. Update the configuration and retry.",
-              "Missing Supabase keys",
-            );
-            return;
-          }
+          const supabaseUrl = SUPABASE_URL;
+          const anonKey = SUPABASE_ANON_KEY;
 
-          supabase = createClient(
-            window.SUPABASE_URL,
-            window.SUPABASE_ANON_KEY,
-          );
+          supabase = createClient(supabaseUrl, anonKey);
 
           channel = supabase.channel(`minimal-${sessionCode}`, {
             config: { broadcast: { ack: false } },
@@ -838,9 +835,13 @@
           });
         } catch (err) {
           console.error("Failed to initialise Supabase channel", err);
-          handleConnectionError(
-            "Unable to connect to Supabase. Check your connection and retry.",
-          );
+          const message =
+            err?.message ||
+            "Unable to connect to Supabase. Check your connection and retry.";
+          const statusLabel = err?.message?.includes("Supabase")
+            ? "Supabase configuration missing"
+            : undefined;
+          handleConnectionError(message, statusLabel);
         }
       }
 
