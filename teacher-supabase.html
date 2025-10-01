@@ -160,6 +160,7 @@
       let activeStroke=null,pointerId=null,buffer=[],rafId=null;
 
       function startSession(){
+        if(channel) return;
         sessionCode=sessionInput.value.trim().toUpperCase();
         channel=supabase.channel(`minimal-${sessionCode}`,{config:{broadcast:{ack:false}}});
         channel.on("broadcast",{event:"student_ready"},({payload})=>addStudent(payload.username));
@@ -170,8 +171,13 @@
         channel.subscribe((st)=>{
           if(st==="SUBSCRIBED"){ status.textContent="Connected"; status.className="connected"; sessionInfo.classList.add("active"); sessionCodeDisplay.textContent=sessionCode; }
         });
+        startSessionBtn.disabled=true;
+        startSessionBtn.textContent='Session live';
       }
       startSessionBtn.onclick=startSession;
+
+      // Auto start the default session as soon as the dashboard loads.
+      startSession();
 
       function addStudent(username){
         if(students.has(username)) return;

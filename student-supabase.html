@@ -151,9 +151,12 @@
     const clearBtn = document.getElementById('clearBtn');
     const stylusToggle = document.getElementById('stylusToggle');
 
+    canvas.style.touchAction = 'none';
+
     /* ----------------- Canvas / DPR ----------------- */
     const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
     let dpr = 1;
+    const usePointerRawUpdate = 'onpointerrawupdate' in window;
 
     function resizeCanvasForDPR() {
       const rect = canvas.getBoundingClientRect();
@@ -194,6 +197,9 @@
     let isErasing = false;
     let lastErasePoint = null;
     let erasedStrokes = [];   // strokes deleted during current drag
+
+    const MIN_SAMPLE_DISTANCE = 0.45;
+    const INTERPOLATION_STEP = 3.2;
 
     /* ----------------- UI wiring ----------------- */
     function setStatus(kind, text) {
@@ -342,6 +348,99 @@
     }
 
     /* ----------------- Drawing ----------------- */
+    function drawDotPath(targetCtx, point, size, color) {
+      if (!point) return;
+      targetCtx.beginPath();
+      const radius = Math.max(0.25, size / 2);
+      targetCtx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+      targetCtx.fillStyle = color;
+      targetCtx.fill();
+    }
+
+    function drawSmoothStrokePath(targetCtx, points, color, size) {
+      if (!points?.length) return;
+
+      const strokeColor = color || '#111827';
+      const strokeSize = Math.max(0.5, Number.isFinite(size) ? size : 3);
+
+      targetCtx.save();
+      targetCtx.lineCap = 'round';
+      targetCtx.lineJoin = 'round';
+      targetCtx.strokeStyle = strokeColor;
+      targetCtx.lineWidth = strokeSize;
+      targetCtx.fillStyle = strokeColor;
+
+      if (points.length === 1) {
+        drawDotPath(targetCtx, points[0], strokeSize, strokeColor);
+        targetCtx.restore();
+        return;
+      }
+
+      if (points.length === 2) {
+        targetCtx.beginPath();
+        targetCtx.moveTo(points[0].x, points[0].y);
+        targetCtx.lineTo(points[1].x, points[1].y);
+        targetCtx.stroke();
+        drawDotPath(targetCtx, points[1], strokeSize, strokeColor);
+        targetCtx.restore();
+        return;
+      }
+
+      targetCtx.beginPath();
+      targetCtx.moveTo(points[0].x, points[0].y);
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = i === 0 ? points[0] : points[i - 1];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = i + 2 < points.length ? points[i + 2] : points[i + 1];
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+        targetCtx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+      }
+
+      targetCtx.stroke();
+      drawDotPath(targetCtx, points[points.length - 1], strokeSize, strokeColor);
+      targetCtx.restore();
+    }
+
+    function appendPointWithInterpolation(array, point) {
+      if (!point) return;
+      const last = array[array.length - 1];
+      if (last) {
+        const dx = point.x - last.x;
+        const dy = point.y - last.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < MIN_SAMPLE_DISTANCE) {
+          last.x += dx * 0.5;
+          last.y += dy * 0.5;
+          return;
+        }
+        const steps = Math.min(6, Math.floor(dist / INTERPOLATION_STEP));
+        for (let i = 1; i < steps; i++) {
+          const t = i / steps;
+          array.push({
+            x: last.x + dx * t,
+            y: last.y + dy * t
+          });
+        }
+      }
+      array.push(point);
+    }
+
+    function appendSamples(array, samples) {
+      samples.forEach(sample => appendPointWithInterpolation(array, { x: sample.x, y: sample.y }));
+    }
+
+    function getCoalescedSamples(e) {
+      const list = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+      return list.map(item => getCanvasPoint(item));
+    }
+
     function redrawCanvas() {
       ctx.fillStyle = 'white';
       ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
@@ -364,26 +463,7 @@
     function drawStroke(stroke) {
       if (!stroke.points?.length) return;
       ctx.globalCompositeOperation = 'source-over';
-      if (stroke.points.length === 1) {
-        const p = stroke.points[0];
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, stroke.size / 2, 0, Math.PI * 2);
-        ctx.fillStyle = stroke.color;
-        ctx.fill();
-        return;
-      }
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.size;
-      ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (let i = 1; i < stroke.points.length; i++) {
-        const prev = stroke.points[i - 1];
-        const cur = stroke.points[i];
-        const mx = (prev.x + cur.x) / 2;
-        const my = (prev.y + cur.y) / 2;
-        ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
-      }
-      ctx.stroke();
+      drawSmoothStrokePath(ctx, stroke.points, stroke.color, stroke.size);
     }
 
     // RAF draw of incremental buffered segment
@@ -397,41 +477,14 @@
 
     function flushBufferedSegment() {
       if (!activeStroke || strokeBuffer.length === 0) return;
-      ctx.strokeStyle = activeStroke.color;
-      ctx.lineWidth = activeStroke.size;
       ctx.globalCompositeOperation = 'source-over';
-
-      if (strokeBuffer.length === 1) {
-        const p = strokeBuffer[0];
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, activeStroke.size / 2, 0, Math.PI * 2);
-        ctx.fillStyle = activeStroke.color;
-        ctx.fill();
-        strokeBuffer = strokeBuffer.slice(-1);
-        return;
-      }
-      ctx.beginPath();
-      let prev = strokeBuffer[0];
-      ctx.moveTo(prev.x, prev.y);
-      for (let i = 1; i < strokeBuffer.length; i++) {
-        const cur = strokeBuffer[i];
-        const mx = (prev.x + cur.x) / 2;
-        const my = (prev.y + cur.y) / 2;
-        ctx.quadraticCurveTo(prev.x, prev.y, mx, my);
-        prev = cur;
-      }
-      ctx.stroke();
-      strokeBuffer = strokeBuffer.slice(-2);
+      drawSmoothStrokePath(ctx, strokeBuffer, activeStroke.color, activeStroke.size);
+      strokeBuffer = strokeBuffer.slice(-5);
     }
 
     function getCanvasPoint(ev) {
       const rect = canvas.getBoundingClientRect();
       return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
-    }
-
-    function addCoalescedPoints(e, arr) {
-      const list = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-      for (const ce of list) arr.push(getCanvasPoint(ce));
     }
 
     function distToSegmentSquared(px, py, x1, y1, x2, y2) {
@@ -512,7 +565,7 @@
       channel?.send({ type:'broadcast', event:'student_stroke_start', payload:{ username, stroke:{ id: activeStroke.id, color: activeStroke.color, size: activeStroke.size } }});
     });
 
-    canvas.addEventListener('pointermove', (e) => {
+    function handlePointerMove(e) {
       if (activePointerId !== e.pointerId) return;
 
       if (isErasing) {
@@ -541,16 +594,28 @@
       if (!activeStroke) return;
 
       e.preventDefault();
+      const samples = getCoalescedSamples(e);
+      if (!samples.length) return;
+
       const before = activeStroke.points.length;
-      addCoalescedPoints(e, activeStroke.points);
-      addCoalescedPoints(e, strokeBuffer);
+      appendSamples(activeStroke.points, samples);
+      appendSamples(strokeBuffer, samples);
 
       if (activeStroke.points.length !== before) {
         const last = activeStroke.points[activeStroke.points.length - 1];
         channel?.send({ type:'broadcast', event:'student_stroke_point', payload:{ username, strokeId: activeStroke.id, x: last.x, y: last.y }});
       }
       scheduleDraw();
+    }
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (usePointerRawUpdate) return;
+      handlePointerMove(e);
     });
+
+    if (usePointerRawUpdate) {
+      canvas.addEventListener('pointerrawupdate', handlePointerMove);
+    }
 
     function finalizePointer(e) {
       if (activePointerId !== e.pointerId) return;
