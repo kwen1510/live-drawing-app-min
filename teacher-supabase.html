@@ -3,252 +3,883 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Teacher - Full Dashboard</title>
+  <title>Teacher - Classroom Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-      min-height: 100vh;
+    :root {
+      color-scheme: light;
+    }
+    .color-btn {
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .color-btn:hover {
+      transform: scale(1.05);
+    }
+    .color-btn.active {
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 0 6px rgba(37, 99, 235, 0.25);
+      border-color: rgba(37, 99, 235, 0.65);
+    }
+    .tool-btn.active {
+      background: rgb(37 99 235);
       color: white;
-      padding: 32px 24px;
+      border-color: rgb(37 99 235);
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
     }
-    .header {
-      background: rgba(255, 255, 255, 0.12);
-      backdrop-filter: blur(10px);
-      padding: 32px;
-      border-radius: 24px;
-      margin-bottom: 32px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    .stylus-indicator.off {
+      background: rgb(226 232 240);
+      color: rgb(100 116 139);
     }
-    h1 { font-size: 32px; font-weight: 700; margin-bottom: 24px; letter-spacing: -0.5px; }
-    .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .header input {
-      padding: 14px 18px; font-size: 16px;
-      border: 2px solid rgba(255,255,255,0.2);
-      border-radius: 12px; background: rgba(255,255,255,0.95);
-      min-width: 200px; font-weight: 500;
+    #overlay {
+      touch-action: none;
     }
-    .header button {
-      padding: 14px 28px;
-      background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
-      color: white; border: none; border-radius: 12px;
-      font-size: 16px; font-weight: 600; cursor: pointer;
-    }
-    #sessionInfo {
-      margin-top: 20px; padding: 20px;
-      background: rgba(16,185,129,0.15);
-      border-radius: 12px; display: none;
-      border: 2px solid rgba(16,185,129,0.3);
-    }
-    #sessionInfo.active { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
-    #status { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; }
-    #status.connecting { background: rgba(251,146,60,0.9); }
-    #status.connected { background: rgba(34,197,94,0.9); }
-    #status.error { background: rgba(239,68,68,0.9); }
-    #students { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:24px; margin-top:32px; }
-    .student-card {
-      background:white; border-radius:20px; padding:20px;
-      box-shadow:0 20px 60px rgba(0,0,0,0.3);
-    }
-    .student-card h3 { color:#1e293b; margin-bottom:16px; font-size:18px; font-weight:700; display:flex; gap:8px; }
-    .student-card canvas {
-      width:100%; border:3px solid #e5e7eb; border-radius:12px;
-      display:block; margin-bottom:16px; background:white;
-    }
-    .student-card button {
-      width:100%; padding:14px; background:linear-gradient(135deg,#dc2626 0%,#ef4444 100%);
-      color:white; border:none; border-radius:12px; font-weight:600; font-size:15px;
-    }
-    /* Modal */
-    #modal {
-      display:none; position:fixed; inset:0;
-      background:rgba(0,0,0,0.95); backdrop-filter:blur(20px);
-      z-index:1000; padding:32px;
-    }
-    #modal.open { display:flex; flex-direction:column; align-items:center; justify-content:center; }
-    #canvasWrapper { position:relative; background:white; border-radius:20px; padding:32px; }
-    #bigCanvas, #overlay { display:block; max-width:90vw; max-height:70vh; border-radius:16px; }
-    #overlay { position:absolute; top:32px; left:32px; pointer-events:auto; cursor:crosshair; }
-    .toolbar { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; background:white; padding:8px 12px; border-radius:9999px; }
-    .color-btn { width:32px; height:32px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
-    .color-btn.active { border-color:#1e3a8a; }
-    .tool-btn { padding:6px 12px; border:1px solid #cbd5e1; border-radius:20px; background:white; cursor:pointer; }
-    .tool-btn.active { background:#1e3a8a; color:white; }
-    .action-btn { padding:6px 12px; border-radius:20px; background:#f1f5f9; cursor:pointer; }
-    .action-btn.clear { color:#dc2626; }
-    #stylusToggle { padding:6px 12px; border-radius:20px; background:#bfdbfe; cursor:pointer; }
   </style>
 </head>
-<body>
-  <div class="header">
-    <h1>📊 Teacher Dashboard</h1>
-    <div class="controls">
-      <input type="text" id="sessionInput" value="TEST123">
-      <button id="startSessionBtn">Start Session</button>
-      <span id="status" class="connecting">Not connected</span>
+<body class="min-h-screen bg-gradient-to-br from-sky-100 via-white to-slate-100 p-6 text-slate-700">
+  <div class="mx-auto flex w-full max-w-[1200px] flex-col gap-6">
+    <header class="rounded-[28px] border border-slate-200 bg-white/80 p-6 shadow-[0_30px_70px_rgba(30,64,175,0.18)] backdrop-blur">
+      <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-slate-900">Teacher Dashboard</h1>
+          <p class="mt-2 max-w-xl text-sm text-slate-500">
+            Monitor every student's canvas and annotate live with the shared toolbar.
+          </p>
+        </div>
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div class="flex items-center gap-3">
+            <input
+              type="text"
+              id="sessionInput"
+              value="TEST123"
+              class="w-32 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-slate-700 shadow-inner focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-100"
+            />
+            <button
+              id="startSessionBtn"
+              type="button"
+              class="rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-900/25 transition hover:from-blue-500 hover:to-sky-400 focus:outline-none focus:ring-4 focus:ring-blue-200"
+            >
+              Start session
+            </button>
+          </div>
+          <div
+            id="status"
+            class="inline-flex items-center justify-center rounded-full border border-blue-200 bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700"
+          >
+            Not connected
+          </div>
+        </div>
+      </div>
+      <div
+        id="sessionInfo"
+        class="mt-5 hidden items-center justify-between rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm font-semibold text-emerald-700"
+      >
+        <span>Session <span id="sessionCode" class="font-bold text-emerald-600"></span></span>
+        <span><span id="studentCount" class="text-lg font-bold text-slate-900">0</span> students online</span>
+      </div>
+    </header>
+
+    <div
+      id="emptyState"
+      class="flex flex-1 flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-300 bg-white/70 p-12 text-center text-slate-500"
+    >
+      <h2 class="text-xl font-semibold text-slate-700">Waiting for students</h2>
+      <p class="mt-2 max-w-sm text-sm text-slate-500">
+        Share the session code so learners can join and draw in real time.
+      </p>
     </div>
-    <div id="sessionInfo">
-      <div><strong>Session:</strong> <span id="sessionCode"></span></div>
-      <div><strong>Students Online:</strong> <span id="studentCount">0</span></div>
-    </div>
+
+    <div id="students" class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3"></div>
   </div>
 
-  <div id="students"></div>
-  <div id="emptyState">👥 Waiting for students...</div>
-
-  <div id="modal">
-    <div style="margin-bottom:12px;display:flex;justify-content:space-between;width:820px;color:white;">
-      <h2 id="modalTitle">Annotating Student</h2>
-      <button id="closeModal">Close</button>
-    </div>
-    <div id="canvasWrapper">
-      <canvas id="bigCanvas" width="800" height="600"></canvas>
-      <canvas id="overlay" width="800" height="600"></canvas>
-    </div>
-    <div class="toolbar">
-      <div>
-        <div class="color-btn active" style="background:#dc2626" data-color="#dc2626"></div>
-        <div class="color-btn" style="background:#9333ea" data-color="#9333ea"></div>
-        <div class="color-btn" style="background:#14b8a6" data-color="#14b8a6"></div>
+  <div
+    id="modal"
+    class="invisible pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur"
+  >
+    <div class="pointer-events-auto flex w-full max-w-[1150px] flex-col gap-6 rounded-[28px] border border-slate-200 bg-white/95 p-6 shadow-[0_45px_90px_rgba(30,64,175,0.2)]">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 id="modalTitle" class="text-2xl font-semibold text-slate-900">Annotating Student</h2>
+          <p class="text-sm text-slate-500">Use the toolbar to add notes directly onto the student's canvas.</p>
+        </div>
+        <button
+          id="closeModal"
+          type="button"
+          class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200"
+        >
+          Close
+        </button>
       </div>
-      <button class="tool-btn active" data-tool="pen">Pen</button>
-      <button class="tool-btn" data-tool="eraser">Eraser</button>
-      <input type="range" id="brushSize" min="1" max="24" value="4">
-      <span id="sizeDisplay">4</span>
-      <button class="action-btn" id="undoBtn" disabled>Undo</button>
-      <button class="action-btn" id="redoBtn" disabled>Redo</button>
-      <button class="action-btn clear" id="clearBtn">Clear</button>
-      <div id="stylusToggle">Stylus mode (pen only)</div>
+      <div class="flex flex-1 flex-col gap-6 lg:flex-row">
+        <div
+          id="teacherToolbar"
+          class="flex h-[600px] w-full max-w-[190px] flex-shrink-0 flex-col justify-between rounded-3xl border border-slate-200 bg-white p-5 text-slate-700 shadow-[0_20px_55px_rgba(30,41,59,0.18)]"
+        >
+          <div class="space-y-5">
+            <div class="flex flex-col items-center gap-3">
+              <span class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Colors</span>
+              <div id="teacherColorPalette" class="flex flex-col items-center gap-3"></div>
+            </div>
+            <div class="space-y-3">
+              <span class="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Tools</span>
+              <div class="flex flex-col gap-2">
+                <button
+                  class="tool-btn rounded-2xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                  data-tool="pen"
+                >
+                  Pen
+                </button>
+                <button
+                  class="tool-btn rounded-2xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                  data-tool="eraser"
+                >
+                  Eraser
+                </button>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <span class="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Brush Size</span>
+              <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-3 shadow-inner">
+                <input
+                  type="range"
+                  id="teacherBrushSize"
+                  min="1"
+                  max="20"
+                  value="4"
+                  class="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-blue-500"
+                />
+                <span id="teacherSizeDisplay" class="text-base font-bold text-slate-800">4</span>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div class="flex flex-col gap-2">
+              <button
+                id="teacherUndoBtn"
+                class="action-btn rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled
+              >
+                Undo
+              </button>
+              <button
+                id="teacherRedoBtn"
+                class="action-btn rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled
+              >
+                Redo
+              </button>
+              <button
+                id="teacherClearBtn"
+                class="action-btn rounded-2xl bg-rose-100 px-4 py-2 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled
+              >
+                Clear
+              </button>
+            </div>
+            <button
+              id="teacherStylusToggle"
+              class="stylus-indicator w-full rounded-2xl bg-blue-100 px-4 py-2 text-center text-sm font-semibold text-blue-700 transition hover:bg-blue-200"
+            >
+              Stylus mode (pen only)
+            </button>
+          </div>
+        </div>
+        <div class="flex flex-1 items-center justify-center rounded-[28px] border border-slate-200 bg-slate-50 p-4 shadow-inner">
+          <div class="relative">
+            <canvas
+              id="bigCanvas"
+              width="800"
+              height="600"
+              class="h-[600px] w-[800px] rounded-3xl border-2 border-slate-200 bg-white shadow-inner shadow-slate-900/5"
+            ></canvas>
+            <canvas
+              id="overlay"
+              width="800"
+              height="600"
+              class="pointer-events-auto absolute left-0 top-0 h-[600px] w-[800px] rounded-3xl"
+            ></canvas>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
-    // 🔑 Replace with the real anon key from your Supabase project
     window.SUPABASE_URL = "https://eytswszeopdxmtxxbkrb.supabase.co";
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhia3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
   </script>
 
   <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm";
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm';
 
-    window.addEventListener("DOMContentLoaded", () => {
-      const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const COLOR_PRESETS = [
+      { label: 'Ink', value: '#111827' },
+      { label: 'Ocean', value: '#2563eb' },
+      { label: 'Magenta', value: '#db2777' },
+      { label: 'Emerald', value: '#10b981' },
+      { label: 'Sunrise', value: '#f97316' },
+      { label: 'Gold', value: '#facc15' }
+    ];
 
-      const studentsDiv=document.getElementById("students"),
-            emptyState=document.getElementById("emptyState"),
-            modal=document.getElementById("modal"),
-            bigCanvas=document.getElementById("bigCanvas"),
-            bigCtx=bigCanvas.getContext("2d"),
-            overlay=document.getElementById("overlay"),
-            overlayCtx=overlay.getContext("2d"),
-            modalTitle=document.getElementById("modalTitle"),
-            closeModal=document.getElementById("closeModal"),
-            status=document.getElementById("status"),
-            sessionInfo=document.getElementById("sessionInfo"),
-            sessionCodeDisplay=document.getElementById("sessionCode"),
-            studentCount=document.getElementById("studentCount"),
-            sessionInput=document.getElementById("sessionInput"),
-            startSessionBtn=document.getElementById("startSessionBtn");
+    const MIN_SAMPLE_DISTANCE = 0.45;
+    const INTERPOLATION_STEP = 3.2;
 
-      let channel,sessionCode,currentStudent=null;
-      const students=new Map();
+    const studentsGrid = document.getElementById('students');
+    const emptyState = document.getElementById('emptyState');
+    const statusBadge = document.getElementById('status');
+    const sessionInput = document.getElementById('sessionInput');
+    const startSessionBtn = document.getElementById('startSessionBtn');
+    const sessionInfo = document.getElementById('sessionInfo');
+    const sessionCodeEl = document.getElementById('sessionCode');
+    const studentCountEl = document.getElementById('studentCount');
 
-      // Toolbar state
-      let currentColor="#dc2626", currentTool="pen", brushSize=4, stylusOnly=true;
-      let annotationHistory=[],annotationHistoryStep=-1;
-      let activeStroke=null,pointerId=null,buffer=[],rafId=null;
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const closeModal = document.getElementById('closeModal');
+    const bigCanvas = document.getElementById('bigCanvas');
+    const bigCtx = bigCanvas.getContext('2d', { alpha: false, desynchronized: true });
+    const overlay = document.getElementById('overlay');
+    const overlayCtx = overlay.getContext('2d', { alpha: true, desynchronized: true });
 
-      function startSession(){
-        if(channel) return;
-        sessionCode=sessionInput.value.trim().toUpperCase();
-        channel=supabase.channel(`minimal-${sessionCode}`,{config:{broadcast:{ack:false}}});
-        channel.on("broadcast",{event:"student_ready"},({payload})=>addStudent(payload.username));
-        channel.on("broadcast",{event:"student_stroke_end"},({payload})=>{
-          const s=students.get(payload.username); if(!s) return;
-          s.strokes.push(payload.stroke); redrawStudentCanvas(s);
-        });
-        channel.subscribe((st)=>{
-          if(st==="SUBSCRIBED"){ status.textContent="Connected"; status.className="connected"; sessionInfo.classList.add("active"); sessionCodeDisplay.textContent=sessionCode; }
-        });
-        startSessionBtn.disabled=true;
-        startSessionBtn.textContent='Session live';
+    const teacherToolbar = document.getElementById('teacherToolbar');
+    const teacherColorPalette = document.getElementById('teacherColorPalette');
+    const teacherToolButtons = Array.from(teacherToolbar.querySelectorAll('.tool-btn'));
+    const teacherBrushSize = document.getElementById('teacherBrushSize');
+    const teacherSizeDisplay = document.getElementById('teacherSizeDisplay');
+    const teacherUndoBtn = document.getElementById('teacherUndoBtn');
+    const teacherRedoBtn = document.getElementById('teacherRedoBtn');
+    const teacherClearBtn = document.getElementById('teacherClearBtn');
+    const teacherStylusToggle = document.getElementById('teacherStylusToggle');
+
+    overlay.style.touchAction = 'none';
+    const usePointerRawUpdate = 'onpointerrawupdate' in window;
+
+    let supabaseClient = null;
+    let channel = null;
+    let sessionCode = '';
+
+    const students = new Map();
+    const activeRemoteStrokes = new Map();
+
+    let currentStudent = null;
+
+    let teacherCurrentColor = COLOR_PRESETS[0].value;
+    let teacherCurrentTool = 'pen';
+    let teacherBrush = 4;
+    let teacherStylusOnly = true;
+
+    let annotationPointerId = null;
+    let activeAnnotationStroke = null;
+    let teacherErasing = false;
+    let teacherLastErasePoint = null;
+    let erasedAnnotationIds = new Set();
+
+    function setStatus(state, text) {
+      statusBadge.textContent = text;
+      statusBadge.className = 'inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition-colors';
+      if (state === 'connected') {
+        statusBadge.classList.add('border', 'border-emerald-200', 'bg-emerald-100', 'text-emerald-700');
+      } else if (state === 'error') {
+        statusBadge.classList.add('border', 'border-rose-200', 'bg-rose-100', 'text-rose-600');
+      } else {
+        statusBadge.classList.add('border', 'border-blue-200', 'bg-blue-100', 'text-blue-700');
       }
-      startSessionBtn.onclick=startSession;
+    }
 
-      // Auto start the default session as soon as the dashboard loads.
-      startSession();
+    function appendPointWithInterpolation(array, point) {
+      if (!point) return;
+      const last = array[array.length - 1];
+      if (last) {
+        const dx = point.x - last.x;
+        const dy = point.y - last.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < MIN_SAMPLE_DISTANCE) {
+          last.x += dx * 0.5;
+          last.y += dy * 0.5;
+          return;
+        }
+        const steps = Math.min(6, Math.floor(dist / INTERPOLATION_STEP));
+        for (let i = 1; i < steps; i++) {
+          const t = i / steps;
+          array.push({ x: last.x + dx * t, y: last.y + dy * t });
+        }
+      }
+      array.push(point);
+    }
 
-      function addStudent(username){
-        if(students.has(username)) return;
-        emptyState.style.display="none";
-        const canvas=document.createElement("canvas"); canvas.width=800; canvas.height=600;
-        const ctx=canvas.getContext("2d"); ctx.fillStyle="white"; ctx.fillRect(0,0,800,600);
-        const student={username,canvas,ctx,strokes:[],teacherAnnotations:[]};
-        students.set(username,student);
-        const card=document.createElement("div"); card.className="student-card";
-        card.innerHTML=`<h3>${username}</h3><canvas width="800" height="600"></canvas><button>Annotate</button>`;
-        card.querySelector("button").onclick=()=>annotate(username);
-        studentsDiv.appendChild(card);
-        studentCount.textContent=students.size;
+    function appendSamples(array, samples) {
+      samples.forEach(sample => appendPointWithInterpolation(array, { x: sample.x, y: sample.y }));
+    }
+
+    function drawSmoothStrokePath(targetCtx, points, color, size) {
+      if (!points?.length) return;
+      const strokeColor = color || '#111827';
+      const strokeSize = Math.max(0.5, Number.isFinite(size) ? size : 3);
+
+      targetCtx.save();
+      targetCtx.lineCap = 'round';
+      targetCtx.lineJoin = 'round';
+      targetCtx.strokeStyle = strokeColor;
+      targetCtx.lineWidth = strokeSize;
+      targetCtx.fillStyle = strokeColor;
+
+      if (points.length === 1) {
+        targetCtx.beginPath();
+        targetCtx.arc(points[0].x, points[0].y, strokeSize / 2, 0, Math.PI * 2);
+        targetCtx.fill();
+        targetCtx.restore();
+        return;
       }
 
-      function redrawStudentCanvas(student){
-        const ctx=student.ctx; ctx.fillStyle="white"; ctx.fillRect(0,0,800,600);
-        student.strokes.forEach(stk=>drawStroke(ctx,stk));
-        const card=Array.from(studentsDiv.children).find(c=>c.querySelector("h3").textContent===student.username);
-        if(card){ card.querySelector("canvas").getContext("2d").drawImage(student.canvas,0,0); }
-      }
-      function drawStroke(ctx,stk){
-        if(!stk.points?.length) return;
-        ctx.strokeStyle=stk.color; ctx.lineWidth=stk.size;
-        ctx.beginPath(); ctx.moveTo(stk.points[0].x,stk.points[0].y);
-        for(let i=1;i<stk.points.length;i++){ const p=stk.points[i-1],c=stk.points[i]; const mx=(p.x+c.x)/2,my=(p.y+c.y)/2; ctx.quadraticCurveTo(p.x,p.y,mx,my); }
-        ctx.stroke();
+      targetCtx.beginPath();
+      targetCtx.moveTo(points[0].x, points[0].y);
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = i === 0 ? points[0] : points[i - 1];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = i + 2 < points.length ? points[i + 2] : points[i + 1];
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+        targetCtx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
       }
 
-      function annotate(username){
-        currentStudent=username;
-        const s=students.get(username);
-        bigCtx.clearRect(0,0,800,600); bigCtx.drawImage(s.canvas,0,0);
-        overlayCtx.clearRect(0,0,800,600);
-        modalTitle.textContent=`Annotating ${username}`;
-        modal.classList.add("open");
-      }
-      closeModal.onclick=()=>{ modal.classList.remove("open"); currentStudent=null; };
+      targetCtx.stroke();
+      targetCtx.restore();
+    }
 
-      // Overlay drawing
-      overlay.addEventListener("pointerdown",(e)=>{
-        if(stylusOnly && e.pointerType!=="pen") return;
-        pointerId=e.pointerId;
-        const p=toCanvasPoint(e);
-        if(currentTool==="pen"){ activeStroke={id:Date.now()+"-"+Math.random(),color:currentColor,size:brushSize,points:[p]}; buffer=[p]; scheduleDraw(); }
+    function distToSegmentSquared(px, py, x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len2 = dx * dx + dy * dy;
+      if (len2 === 0) return (px - x1) ** 2 + (py - y1) ** 2;
+      let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const qx = x1 + t * dx;
+      const qy = y1 + t * dy;
+      return (px - qx) ** 2 + (py - qy) ** 2;
+    }
+
+    function renderColorPalette(container, onSelect, currentValue) {
+      container.innerHTML = '';
+      COLOR_PRESETS.forEach(preset => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'color-btn flex h-12 w-12 items-center justify-center rounded-full border-4 border-transparent shadow-sm';
+        btn.dataset.color = preset.value;
+        btn.title = preset.label;
+        btn.setAttribute('aria-label', preset.label);
+        btn.style.background = preset.value;
+        btn.addEventListener('click', () => onSelect(preset.value));
+        container.appendChild(btn);
       });
-      overlay.addEventListener("pointermove",(e)=>{
-        if(e.pointerId!==pointerId||!activeStroke) return;
-        addCoalescedPoints(e,activeStroke.points); addCoalescedPoints(e,buffer); scheduleDraw();
+      Array.from(container.querySelectorAll('.color-btn')).forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.color === currentValue);
       });
-      overlay.addEventListener("pointerup",finalizeStroke);
-      overlay.addEventListener("pointercancel",finalizeStroke);
-      function finalizeStroke(){
-        if(!activeStroke) return;
-        flushBuffer();
-        const s=students.get(currentStudent);
-        s.teacherAnnotations.push(activeStroke);
-        channel.send({type:"broadcast",event:"teacher_stroke_end",payload:{target:currentStudent,stroke:activeStroke}});
-        activeStroke=null; buffer=[]; pointerId=null;
-      }
-      function toCanvasPoint(e){ const r=overlay.getBoundingClientRect(); return {x:(e.clientX-r.left)*(800/r.width),y:(e.clientY-r.top)*(600/r.height)}; }
-      function addCoalescedPoints(e,arr){ (e.getCoalescedEvents?e.getCoalescedEvents():[e]).forEach(ce=>arr.push(toCanvasPoint(ce))); }
-      function scheduleDraw(){ if(rafId!==null) return; rafId=requestAnimationFrame(()=>{ rafId=null; flushBuffer(); }); }
-      function flushBuffer(){ if(!buffer.length||!activeStroke) return; overlayCtx.strokeStyle=activeStroke.color; overlayCtx.lineWidth=activeStroke.size; overlayCtx.beginPath(); overlayCtx.moveTo(buffer[0].x,buffer[0].y); for(let i=1;i<buffer.length;i++){ const p=buffer[i-1],c=buffer[i]; const mx=(p.x+c.x)/2,my=(p.y+c.y)/2; overlayCtx.quadraticCurveTo(p.x,p.y,mx,my); } overlayCtx.stroke(); buffer=buffer.slice(-2); }
+    }
 
-      // Toolbar controls
-      document.querySelectorAll(".color-btn").forEach(btn=>btn.onclick=()=>{ document.querySelectorAll(".color-btn").forEach(b=>b.classList.remove("active")); btn.classList.add("active"); currentColor=btn.dataset.color; });
-      document.querySelectorAll(".tool-btn").forEach(btn=>btn.onclick=()=>{ currentTool=btn.dataset.tool; document.querySelectorAll(".tool-btn").forEach(b=>b.classList.toggle("active",b===btn)); });
-      document.getElementById("brushSize").oninput=e=>{ brushSize=parseInt(e.target.value); document.getElementById("sizeDisplay").textContent=brushSize; };
-      document.getElementById("stylusToggle").onclick=()=>{ stylusOnly=!stylusOnly; };
+    function updateTeacherColorSelection() {
+      Array.from(teacherColorPalette.querySelectorAll('.color-btn')).forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.color === teacherCurrentColor);
+      });
+    }
+
+    function updateTeacherToolButtons() {
+      teacherToolButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tool === teacherCurrentTool));
+    }
+
+    function updateAnnotationButtons() {
+      const student = currentStudent;
+      const hasUndo = Boolean(student) && student.annotationHistoryStep >= 0;
+      const hasRedo = Boolean(student) && student && student.annotationHistoryStep < student.annotations.length - 1;
+      const hasContent = Boolean(student) && student.annotationHistoryStep >= 0;
+      teacherUndoBtn.disabled = !hasUndo;
+      teacherRedoBtn.disabled = !hasRedo;
+      teacherClearBtn.disabled = !hasContent;
+    }
+
+    function ensureStudent(username) {
+      if (students.has(username)) return students.get(username);
+
+      emptyState.classList.add('hidden');
+
+      const baseCanvas = document.createElement('canvas');
+      baseCanvas.width = 800;
+      baseCanvas.height = 600;
+      const baseCtx = baseCanvas.getContext('2d', { alpha: false });
+      baseCtx.fillStyle = '#ffffff';
+      baseCtx.fillRect(0, 0, 800, 600);
+
+      const previewCanvas = document.createElement('canvas');
+      previewCanvas.width = 400;
+      previewCanvas.height = 300;
+      const previewCtx = previewCanvas.getContext('2d');
+      previewCtx.fillStyle = '#ffffff';
+      previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+
+      const card = document.createElement('article');
+      card.className = 'flex flex-col gap-4 rounded-[24px] border border-slate-200 bg-white/85 p-5 shadow-[0_20px_55px_rgba(30,41,59,0.12)] backdrop-blur';
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-slate-900">${username}</h3>
+          <span class="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-500">Live</span>
+        </div>
+        <div class="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-inner">
+          <canvas class="absolute inset-0 h-full w-full" width="400" height="300"></canvas>
+        </div>
+        <button type="button" class="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-200">Open canvas</button>
+      `;
+      const previewElement = card.querySelector('canvas');
+      previewElement.replaceWith(previewCanvas);
+      studentsGrid.appendChild(card);
+
+      const student = {
+        username,
+        strokes: [],
+        canvas: baseCanvas,
+        ctx: baseCtx,
+        previewCanvas,
+        previewCtx,
+        card,
+        annotations: [],
+        annotationHistoryStep: -1
+      };
+      students.set(username, student);
+      studentCountEl.textContent = students.size;
+
+      card.querySelector('button').addEventListener('click', () => openModalForStudent(student));
+
+      renderStudent(student);
+      return student;
+    }
+
+    function getActiveStrokeMap(username) {
+      if (!activeRemoteStrokes.has(username)) {
+        activeRemoteStrokes.set(username, new Map());
+      }
+      return activeRemoteStrokes.get(username);
+    }
+
+    function renderStudent(student) {
+      const ctx = student.ctx;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 800, 600);
+      student.strokes.forEach(stroke => drawSmoothStrokePath(ctx, stroke.points, stroke.color, stroke.size));
+      const active = activeRemoteStrokes.get(student.username);
+      if (active) {
+        active.forEach(stroke => drawSmoothStrokePath(ctx, stroke.points, stroke.color, stroke.size));
+      }
+
+      student.previewCtx.clearRect(0, 0, student.previewCanvas.width, student.previewCanvas.height);
+      student.previewCtx.drawImage(student.canvas, 0, 0, student.previewCanvas.width, student.previewCanvas.height);
+      student.previewCtx.save();
+      student.previewCtx.scale(student.previewCanvas.width / 800, student.previewCanvas.height / 600);
+      for (let i = 0; i <= student.annotationHistoryStep; i++) {
+        const stroke = student.annotations[i];
+        if (stroke) drawSmoothStrokePath(student.previewCtx, stroke.points, stroke.color, stroke.size);
+      }
+      student.previewCtx.restore();
+
+      if (currentStudent && currentStudent.username === student.username) {
+        bigCtx.fillStyle = '#ffffff';
+        bigCtx.fillRect(0, 0, bigCanvas.width, bigCanvas.height);
+        bigCtx.drawImage(student.canvas, 0, 0);
+        redrawAnnotationOverlay(activeAnnotationStroke?.points || null);
+      }
+    }
+
+    function openModalForStudent(student) {
+      currentStudent = student;
+      modalTitle.textContent = `Annotating ${student.username}`;
+      bigCtx.fillStyle = '#ffffff';
+      bigCtx.fillRect(0, 0, bigCanvas.width, bigCanvas.height);
+      bigCtx.drawImage(student.canvas, 0, 0);
+      redrawAnnotationOverlay();
+      updateAnnotationButtons();
+      modal.classList.remove('invisible', 'pointer-events-none');
+      modal.classList.add('pointer-events-auto');
+      updateTeacherColorSelection();
+      updateTeacherToolButtons();
+    }
+
+    function closeModalView() {
+      modal.classList.add('invisible', 'pointer-events-none');
+      modal.classList.remove('pointer-events-auto');
+      currentStudent = null;
+      annotationPointerId = null;
+      activeAnnotationStroke = null;
+      teacherErasing = false;
+      teacherLastErasePoint = null;
+      erasedAnnotationIds.clear();
+      overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+      updateAnnotationButtons();
+    }
+
+    closeModal.addEventListener('click', closeModalView);
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) closeModalView();
     });
+
+    renderColorPalette(teacherColorPalette, (color) => {
+      teacherCurrentColor = color;
+      updateTeacherColorSelection();
+      if (teacherCurrentTool === 'eraser') {
+        teacherCurrentTool = 'pen';
+        updateTeacherToolButtons();
+      }
+    }, teacherCurrentColor);
+
+    teacherToolButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        teacherCurrentTool = btn.dataset.tool;
+        updateTeacherToolButtons();
+      });
+    });
+    updateTeacherToolButtons();
+    updateTeacherColorSelection();
+
+    teacherBrushSize.addEventListener('input', (e) => {
+      teacherBrush = parseInt(e.target.value, 10);
+      teacherSizeDisplay.textContent = teacherBrush;
+    });
+
+    teacherStylusToggle.addEventListener('click', () => {
+      teacherStylusOnly = !teacherStylusOnly;
+      teacherStylusToggle.classList.toggle('off', !teacherStylusOnly);
+      teacherStylusToggle.textContent = teacherStylusOnly ? 'Stylus mode (pen only)' : 'All inputs';
+    });
+
+    function redrawAnnotationOverlay(activePoints = null) {
+      overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+      if (!currentStudent) return;
+      for (let i = 0; i <= currentStudent.annotationHistoryStep; i++) {
+        const stroke = currentStudent.annotations[i];
+        if (stroke) drawSmoothStrokePath(overlayCtx, stroke.points, stroke.color, stroke.size);
+      }
+      if (activePoints?.length && activeAnnotationStroke) {
+        drawSmoothStrokePath(overlayCtx, activePoints, activeAnnotationStroke.color, activeAnnotationStroke.size);
+      }
+    }
+
+    function getOverlayPoint(ev) {
+      const rect = overlay.getBoundingClientRect();
+      return { x: ((ev.clientX - rect.left) * overlay.width) / rect.width, y: ((ev.clientY - rect.top) * overlay.height) / rect.height };
+    }
+
+    function getOverlaySamples(ev) {
+      const list = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
+      return list.map(item => getOverlayPoint(item));
+    }
+
+    function beginAnnotationStroke(point) {
+      activeAnnotationStroke = {
+        id: `${Date.now()}-teacher-${Math.random().toString(16).slice(2)}`,
+        color: teacherCurrentColor,
+        size: teacherBrush,
+        points: []
+      };
+      appendSamples(activeAnnotationStroke.points, [point]);
+      redrawAnnotationOverlay(activeAnnotationStroke.points);
+    }
+
+    function commitAnnotationStroke(stroke) {
+      if (!currentStudent || !stroke.points?.length) return;
+      const student = currentStudent;
+      if (student.annotationHistoryStep < student.annotations.length - 1) {
+        student.annotations.length = student.annotationHistoryStep + 1;
+      }
+      const committed = {
+        id: stroke.id,
+        color: stroke.color,
+        size: stroke.size,
+        points: stroke.points.map(p => ({ x: p.x, y: p.y })),
+        isTeacher: true
+      };
+      student.annotations.push(committed);
+      student.annotationHistoryStep = student.annotations.length - 1;
+      redrawAnnotationOverlay();
+      updateAnnotationButtons();
+      renderStudent(student);
+      channel?.send({ type: 'broadcast', event: 'teacher_stroke_end', payload: { target: student.username, stroke: committed } });
+    }
+
+    function beginTeacherErase(point) {
+      teacherErasing = true;
+      erasedAnnotationIds.clear();
+      teacherLastErasePoint = point;
+      deleteAnnotationsAt(point.x, point.y);
+    }
+
+    function continueTeacherErase(ev) {
+      if (!teacherErasing || !currentStudent) return;
+      const list = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
+      for (const ce of list) {
+        const point = getOverlayPoint(ce);
+        if (teacherLastErasePoint) {
+          const dx = point.x - teacherLastErasePoint.x;
+          const dy = point.y - teacherLastErasePoint.y;
+          const dist = Math.hypot(dx, dy);
+          const steps = Math.max(1, Math.floor(dist / 8));
+          for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            deleteAnnotationsAt(
+              teacherLastErasePoint.x + dx * t,
+              teacherLastErasePoint.y + dy * t
+            );
+          }
+        } else {
+          deleteAnnotationsAt(point.x, point.y);
+        }
+        teacherLastErasePoint = point;
+      }
+    }
+
+    function endTeacherErase() {
+      teacherErasing = false;
+      teacherLastErasePoint = null;
+      erasedAnnotationIds.clear();
+    }
+
+    function deleteAnnotationsAt(x, y) {
+      if (!currentStudent) return;
+      const student = currentStudent;
+      const radius = Math.max(28, teacherBrush * 3);
+      let removed = false;
+      for (let i = student.annotationHistoryStep; i >= 0; i--) {
+        const stroke = student.annotations[i];
+        if (!stroke || erasedAnnotationIds.has(stroke.id)) continue;
+        const hit = stroke.points.some((p, idx) => {
+          const dist = Math.hypot(p.x - x, p.y - y);
+          if (dist <= radius + (stroke.size || 3) / 2) return true;
+          if (idx > 0) {
+            const prev = stroke.points[idx - 1];
+            const d2 = distToSegmentSquared(x, y, prev.x, prev.y, p.x, p.y);
+            return d2 <= (radius + (stroke.size || 3) / 2) ** 2;
+          }
+          return false;
+        });
+        if (hit) {
+          const [removedStroke] = student.annotations.splice(i, 1);
+          student.annotationHistoryStep = Math.min(student.annotationHistoryStep, student.annotations.length - 1);
+          erasedAnnotationIds.add(removedStroke.id);
+          removed = true;
+          channel?.send({ type: 'broadcast', event: 'teacher_stroke_delete', payload: { target: student.username, strokeId: removedStroke.id } });
+        }
+      }
+      if (removed) {
+        redrawAnnotationOverlay(activeAnnotationStroke?.points || null);
+        updateAnnotationButtons();
+        renderStudent(student);
+      }
+    }
+
+    overlay.addEventListener('pointerdown', (ev) => {
+      if (!currentStudent) return;
+      if (teacherStylusOnly && ev.pointerType !== 'pen') return;
+      ev.preventDefault();
+      annotationPointerId = ev.pointerId;
+      overlay.setPointerCapture(annotationPointerId);
+      const point = getOverlayPoint(ev);
+      if (teacherCurrentTool === 'eraser') {
+        beginTeacherErase(point);
+        return;
+      }
+      beginAnnotationStroke(point);
+    });
+
+    function handleOverlayPointerMove(ev) {
+      if (ev.pointerId !== annotationPointerId) return;
+      if (teacherCurrentTool === 'eraser') {
+        ev.preventDefault();
+        continueTeacherErase(ev);
+        return;
+      }
+      if (!activeAnnotationStroke) return;
+      ev.preventDefault();
+      const samples = getOverlaySamples(ev);
+      if (!samples.length) return;
+      appendSamples(activeAnnotationStroke.points, samples);
+      redrawAnnotationOverlay(activeAnnotationStroke.points);
+    }
+
+    if (usePointerRawUpdate) {
+      overlay.addEventListener('pointerrawupdate', handleOverlayPointerMove);
+    } else {
+      overlay.addEventListener('pointermove', handleOverlayPointerMove);
+    }
+
+    function finalizeOverlayPointer(ev) {
+      if (ev.pointerId !== annotationPointerId) return;
+      if (teacherCurrentTool === 'eraser') {
+        endTeacherErase();
+        try { overlay.releasePointerCapture(ev.pointerId); } catch {}
+        annotationPointerId = null;
+        return;
+      }
+      if (activeAnnotationStroke) {
+        commitAnnotationStroke(activeAnnotationStroke);
+      }
+      activeAnnotationStroke = null;
+      annotationPointerId = null;
+      try { overlay.releasePointerCapture(ev.pointerId); } catch {}
+    }
+
+    overlay.addEventListener('pointerup', finalizeOverlayPointer);
+    overlay.addEventListener('pointerleave', finalizeOverlayPointer);
+    overlay.addEventListener('pointercancel', finalizeOverlayPointer);
+
+    teacherUndoBtn.addEventListener('click', () => {
+      if (!currentStudent || currentStudent.annotationHistoryStep < 0) return;
+      const stroke = currentStudent.annotations[currentStudent.annotationHistoryStep];
+      if (!stroke) return;
+      currentStudent.annotationHistoryStep -= 1;
+      redrawAnnotationOverlay(activeAnnotationStroke?.points || null);
+      updateAnnotationButtons();
+      renderStudent(currentStudent);
+      channel?.send({ type: 'broadcast', event: 'teacher_state_change', payload: { target: currentStudent.username, removed: [stroke.id] } });
+    });
+
+    teacherRedoBtn.addEventListener('click', () => {
+      if (!currentStudent) return;
+      if (currentStudent.annotationHistoryStep >= currentStudent.annotations.length - 1) return;
+      const stroke = currentStudent.annotations[currentStudent.annotationHistoryStep + 1];
+      if (!stroke) return;
+      currentStudent.annotationHistoryStep += 1;
+      redrawAnnotationOverlay(activeAnnotationStroke?.points || null);
+      updateAnnotationButtons();
+      renderStudent(currentStudent);
+      channel?.send({ type: 'broadcast', event: 'teacher_state_change', payload: { target: currentStudent.username, added: [{ ...stroke, points: stroke.points.map(p => ({ x: p.x, y: p.y })) }] } });
+    });
+
+    teacherClearBtn.addEventListener('click', () => {
+      if (!currentStudent || currentStudent.annotationHistoryStep < 0) return;
+      currentStudent.annotations = [];
+      currentStudent.annotationHistoryStep = -1;
+      redrawAnnotationOverlay();
+      updateAnnotationButtons();
+      renderStudent(currentStudent);
+      channel?.send({ type: 'broadcast', event: 'teacher_clear', payload: { target: currentStudent.username } });
+    });
+
+    function addStudentStroke(username, stroke) {
+      const student = ensureStudent(username);
+      if (!stroke?.id || !stroke.points?.length) return;
+      if (student.strokes.some(s => s.id === stroke.id)) return;
+      student.strokes.push({ id: stroke.id, color: stroke.color || '#111827', size: stroke.size || 3, points: stroke.points.map(p => ({ x: p.x, y: p.y })) });
+      renderStudent(student);
+    }
+
+    function removeStudentStroke(username, strokeId) {
+      const student = students.get(username);
+      if (!student) return;
+      const idx = student.strokes.findIndex(s => s.id === strokeId);
+      if (idx >= 0) {
+        student.strokes.splice(idx, 1);
+        renderStudent(student);
+      }
+      const activeMap = activeRemoteStrokes.get(username);
+      activeMap?.delete(strokeId);
+    }
+
+    function applyStudentStateChange(username, payload) {
+      const student = ensureStudent(username);
+      (payload.added || []).forEach(stroke => {
+        if (!student.strokes.some(s => s.id === stroke.id)) {
+          student.strokes.push({ id: stroke.id, color: stroke.color || '#111827', size: stroke.size || 3, points: (stroke.points || []).map(p => ({ x: p.x, y: p.y })) });
+        }
+      });
+      (payload.removed || []).forEach(id => {
+        const idx = student.strokes.findIndex(s => s.id === id);
+        if (idx >= 0) student.strokes.splice(idx, 1);
+        const activeMap = activeRemoteStrokes.get(username);
+        activeMap?.delete(id);
+      });
+      renderStudent(student);
+    }
+
+    function handleStudentClear(username) {
+      const student = students.get(username);
+      if (!student) return;
+      student.strokes = [];
+      renderStudent(student);
+      activeRemoteStrokes.delete(username);
+    }
+
+    startSessionBtn.addEventListener('click', startSession);
+
+    function startSession() {
+      if (channel) return;
+      sessionCode = sessionInput.value.trim().toUpperCase();
+      if (!sessionCode) {
+        alert('Enter a session code to start.');
+        return;
+      }
+      supabaseClient = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      channel = supabaseClient.channel(`minimal-${sessionCode}`, { config: { broadcast: { ack: false } } });
+
+      channel.on('broadcast', { event: 'student_ready' }, ({ payload }) => {
+        if (!payload?.username) return;
+        ensureStudent(payload.username);
+      });
+
+      channel.on('broadcast', { event: 'student_stroke_start' }, ({ payload }) => {
+        if (!payload?.username || !payload.stroke?.id) return;
+        const student = ensureStudent(payload.username);
+        const activeMap = getActiveStrokeMap(payload.username);
+        activeMap.set(payload.stroke.id, { id: payload.stroke.id, color: payload.stroke.color || '#111827', size: payload.stroke.size || 3, points: [] });
+        renderStudent(student);
+      });
+
+      channel.on('broadcast', { event: 'student_stroke_point' }, ({ payload }) => {
+        if (!payload?.username || !payload.strokeId) return;
+        const activeMap = getActiveStrokeMap(payload.username);
+        const stroke = activeMap.get(payload.strokeId);
+        if (!stroke) return;
+        appendPointWithInterpolation(stroke.points, { x: payload.x, y: payload.y });
+        const student = ensureStudent(payload.username);
+        renderStudent(student);
+      });
+
+      channel.on('broadcast', { event: 'student_stroke_end' }, ({ payload }) => {
+        if (!payload?.username || !payload.stroke) return;
+        const activeMap = getActiveStrokeMap(payload.username);
+        activeMap.delete(payload.stroke.id);
+        addStudentStroke(payload.username, payload.stroke);
+      });
+
+      channel.on('broadcast', { event: 'student_state_change' }, ({ payload }) => {
+        if (!payload?.username) return;
+        applyStudentStateChange(payload.username, payload);
+      });
+
+      channel.on('broadcast', { event: 'student_stroke_delete' }, ({ payload }) => {
+        if (!payload?.username || !payload.strokeId) return;
+        removeStudentStroke(payload.username, payload.strokeId);
+      });
+
+      channel.on('broadcast', { event: 'student_clear' }, ({ payload }) => {
+        if (!payload?.username) return;
+        handleStudentClear(payload.username);
+      });
+
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setStatus('connected', 'Connected');
+          sessionInfo.classList.remove('hidden');
+          sessionCodeEl.textContent = sessionCode;
+          channel.send({ type: 'broadcast', event: 'teacher_ready', payload: { sessionCode } });
+        } else if (status === 'CHANNEL_ERROR') {
+          setStatus('error', 'Connection error');
+        }
+      });
+
+      startSessionBtn.disabled = true;
+      startSessionBtn.textContent = 'Session live';
+      setStatus('connecting', 'Connecting…');
+    }
+
+    startSession();
   </script>
 </body>
 </html>
