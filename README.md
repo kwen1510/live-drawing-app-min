@@ -16,17 +16,13 @@ A real-time collaborative drawing app where students can draw and teachers can p
 
 ## 🚀 Quick Start
 
-### 1. Setup Supabase (5 minutes)
+### 1. Supabase Setup
 
-1. Go to [supabase.com](https://supabase.com) and create a free account
-2. Create a new project
-3. Go to **Project Settings** → **API**
-4. Copy your **Project URL** and **anon/public key**
-5. Create a `.env` file in the project root:
-   ```
-   SUPABASE_URL=your_project_url
-   SUPABASE_ANON_KEY=your_anon_key
-   ```
+The student and teacher pages ship with the live classroom project's Supabase
+credentials inlined for convenience. If you need to use your own project,
+update the small `<script>` block near the top of both
+`student-supabase.html` and `teacher-supabase.html` with your project's URL and
+anon key.
 
 ### 2. Run the Server
 
@@ -162,27 +158,20 @@ Teacher receives ← Subscribe to Supabase ← Store in memory
 
 ### Static Hosting (GitHub Pages, Netlify, Vercel)
 
-1. **Hardcode Supabase credentials** in the HTML files:
-   ```javascript
-   const SUPABASE_URL = 'your_url_here';
-   const SUPABASE_ANON_KEY = 'your_key_here';
-   ```
-
-2. **Remove** the `/config.js` dependency
-
-3. **Upload** these files:
+1. **Upload** these files:
    - `index.html`
    - `student-supabase.html`
    - `teacher-supabase.html`
 
-4. **Done!** Your app is live.
+2. **Optional:** tweak the inline Supabase credentials in each HTML file if you
+   want to point to a different project.
+
+3. **Done!** Your app is live.
 
 ### With Node Server (Heroku, Railway, Render)
 
-1. Keep `.env` file with Supabase credentials
-2. Deploy the entire project
-3. Server will serve from `/public` directory
-4. `/config.js` endpoint provides credentials securely
+1. Update the inline Supabase credentials in both HTML files if needed.
+2. Deploy the entire project — no extra config files required.
 
 ---
 

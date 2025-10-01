@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Student • Live Drawing</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -23,6 +26,11 @@
         },
       };
     </script>
+    <script>
+      window.SUPABASE_URL = "https://eytswszeopdxmtxxbkrb.supabase.co";
+      window.SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhpY3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -32,6 +40,7 @@
     <style>
       body {
         font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui;
+        margin: 0;
       }
       .color-btn {
         width: 2.5rem;
@@ -89,9 +98,187 @@
       canvas {
         touch-action: none;
       }
+      body.drawing-active {
+        overflow: hidden;
+      }
+      body.drawing-active main {
+        padding: 0 !important;
+        align-items: stretch !important;
+        justify-content: stretch !important;
+        width: 100vw !important;
+      }
+      .app-shell {
+        display: flex;
+        height: 100vh;
+        width: 100vw;
+        max-width: 100vw;
+        overflow: hidden;
+      }
+      .canvas-area {
+        position: relative;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        gap: 1.5rem;
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      }
+      .canvas-wrapper {
+        width: min(100%, calc(100vh - 3rem));
+        max-height: calc(100vh - 3rem);
+        aspect-ratio: 4 / 3;
+        border-radius: 1.75rem;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        background: #fff;
+        box-shadow: 0 30px 60px rgba(15, 118, 110, 0.12);
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .canvas-wrapper canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .toolbar {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.25rem;
+        padding: 1.5rem 1rem;
+        width: clamp(5.5rem, 16vw, 7.5rem);
+        background: rgba(255, 255, 255, 0.86);
+        backdrop-filter: blur(18px);
+        border-right: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: inset -1px 0 0 rgba(148, 163, 184, 0.15);
+        position: relative;
+        height: 100%;
+      }
+      .toolbar::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+      }
+      .toolbar-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .toolbar-separator {
+        width: 100%;
+        height: 1px;
+        background: rgba(148, 163, 184, 0.35);
+        margin: 0.25rem 0;
+      }
+      .toolbar-bottom {
+        margin-top: auto;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: center;
+      }
+      .toolbar button {
+        width: 100%;
+      }
+      .toolbar .color-btn {
+        width: 2.75rem;
+        height: 2.75rem;
+      }
+      .toolbar .tool-btn,
+      .toolbar .action-btn,
+      .toolbar .stylus-indicator {
+        width: 100%;
+      }
+      .toolbar-toggle {
+        width: 100%;
+        border-radius: 9999px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: rgba(241, 245, 249, 0.9);
+        color: #0f172a;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        padding: 0.75rem 0.5rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .toolbar-toggle:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 25px rgba(15, 118, 110, 0.18);
+      }
+      .status-indicator {
+        position: absolute;
+        top: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      body.toolbar-right .app-shell {
+        flex-direction: row-reverse;
+      }
+      body.toolbar-right .toolbar {
+        border-right: none;
+        border-left: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: inset 1px 0 0 rgba(148, 163, 184, 0.15);
+      }
+      @media (max-width: 900px) {
+        .app-shell {
+          flex-direction: column;
+        }
+        body.toolbar-right .app-shell,
+        body.toolbar-left .app-shell {
+          flex-direction: column;
+        }
+        .toolbar {
+          flex-direction: row;
+          width: 100%;
+          justify-content: center;
+          border-left: none;
+          border-right: none;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+          box-shadow: inset 0 -1px 0 rgba(148, 163, 184, 0.15);
+          padding: 1rem;
+          height: auto;
+        }
+        .toolbar-group {
+          flex-direction: row;
+          flex-wrap: wrap;
+        }
+        .toolbar-separator {
+          display: none;
+        }
+        .toolbar-bottom {
+          margin-top: 0;
+          flex-direction: row;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+        .toolbar button {
+          width: auto;
+        }
+        .canvas-area {
+          padding: 1rem;
+        }
+        .canvas-wrapper {
+          width: 100%;
+          max-height: none;
+        }
+        .status-indicator,
+        body.toolbar-right .status-indicator {
+          top: 1rem;
+          left: 50%;
+          right: auto;
+          transform: translateX(-50%);
+        }
+      }
     </style>
   </head>
-  <body class="min-h-screen bg-slate-50 text-slate-900">
+  <body class="toolbar-left min-h-screen bg-slate-50 text-slate-900">
     <div class="absolute inset-0 -z-10 overflow-hidden">
       <div
         class="absolute -top-48 -right-32 h-[32rem] w-[32rem] rounded-full bg-gradient-to-br from-leaf-100 to-emerald-100 blur-3xl"
@@ -105,7 +292,7 @@
     </div>
 
     <main
-      class="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col items-center justify-center px-6 py-12"
+      class="relative mx-auto flex min-h-screen w-full flex-col items-center justify-center px-6 py-12"
     >
       <section
         id="loginForm"
@@ -166,146 +353,113 @@
         </button>
       </section>
 
-      <section id="appContainer" class="hidden w-full max-w-5xl space-y-6">
-        <header
-          class="flex flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-xl shadow-emerald-200"
-        >
-          <h1 class="text-3xl font-semibold text-slate-900">Your live canvas</h1>
-          <p class="text-sm text-slate-600">
-            Use undo
-            <kbd
-              class="rounded bg-slate-200 px-2 py-1 text-[0.7rem] font-semibold uppercase text-slate-800"
-              >⌘</kbd
-            >
-            +
-            <kbd
-              class="rounded bg-slate-200 px-2 py-1 text-[0.7rem] font-semibold uppercase text-slate-800"
-              >Z</kbd
-            >, redo with ⇧, and switch between pen or eraser anytime.
-          </p>
-          <span
-            id="status"
-            class="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-slate-600 ring-1 ring-slate-200"
-            aria-live="polite"
-            >Connecting…</span
-          >
-        </header>
-
-        <div
-          class="rounded-[2.5rem] border border-slate-200 bg-white p-1 shadow-2xl shadow-emerald-200"
-        >
-          <div
-            class="flex flex-col gap-6 rounded-[2.3rem] border border-slate-200 bg-white p-6"
-          >
-            <div
-              class="toolbar flex flex-wrap items-center justify-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-6 py-3 shadow-lg shadow-slate-200"
-            >
-              <div
-                class="flex items-center gap-2"
-                role="group"
-                aria-label="Brush color"
+      <section id="appContainer" class="hidden h-screen w-screen">
+        <div id="appShell" class="app-shell">
+          <aside class="toolbar" aria-label="Drawing controls">
+            <div class="toolbar-group" role="group" aria-label="Brush color">
+              <button
+                class="color-btn"
+                style="background: #000000"
+                data-color="#000000"
+                title="Black"
+              ></button>
+              <button
+                class="color-btn"
+                style="background: #3b82f6"
+                data-color="#3b82f6"
+                title="Blue"
+              ></button>
+              <button
+                class="color-btn"
+                style="background: #22c55e"
+                data-color="#22c55e"
+                title="Green"
+              ></button>
+            </div>
+            <div class="toolbar-separator" role="presentation"></div>
+            <div class="toolbar-group" role="group" aria-label="Tools">
+              <button
+                class="tool-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+                data-tool="pen"
               >
-                <button
-                  class="color-btn"
-                  style="background: #000000"
-                  data-color="#000000"
-                  title="Black"
-                ></button>
-                <button
-                  class="color-btn"
-                  style="background: #3b82f6"
-                  data-color="#3b82f6"
-                  title="Blue"
-                ></button>
-                <button
-                  class="color-btn"
-                  style="background: #22c55e"
-                  data-color="#22c55e"
-                  title="Green"
-                ></button>
-              </div>
-              <span class="hidden h-8 w-px bg-slate-200 lg:block"></span>
-              <div
-                class="flex items-center gap-2"
-                role="group"
-                aria-label="Tool"
+                Pen
+              </button>
+              <button
+                class="tool-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+                data-tool="eraser"
               >
-                <button
-                  class="tool-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
-                  data-tool="pen"
-                >
-                  Pen
-                </button>
-                <button
-                  class="tool-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
-                  data-tool="eraser"
-                >
-                  Eraser
-                </button>
-              </div>
-              <span class="hidden h-8 w-px bg-slate-200 lg:block"></span>
-              <div class="flex items-center gap-3" aria-label="Brush size">
-                <span
-                  class="text-xs font-semibold uppercase tracking-wide text-slate-500"
-                  >Size</span
-                >
-                <input
-                  type="range"
-                  id="brushSize"
-                  min="1"
-                  max="20"
-                  value="3"
-                  class="h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-slate-200"
-                />
-                <span
-                  id="sizeDisplay"
-                  class="text-sm font-semibold text-slate-700"
-                  >3</span
-                >
-              </div>
-              <span class="hidden h-8 w-px bg-slate-200 lg:block"></span>
-              <div class="flex items-center gap-2" aria-label="Canvas actions">
-                <button
-                  class="action-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
-                  id="undoBtn"
-                  title="Undo (⌘/Ctrl + Z)"
-                  disabled
-                >
-                  Undo
-                </button>
-                <button
-                  class="action-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
-                  id="redoBtn"
-                  title="Redo (⇧ + ⌘/Ctrl + Z)"
-                  disabled
-                >
-                  Redo
-                </button>
-                <button
-                  class="action-btn rounded-full border border-rose-200 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-600"
-                  id="clearBtn"
-                  title="Clear your drawing"
-                >
-                  Clear
-                </button>
-              </div>
-              <span class="hidden h-8 w-px bg-slate-200 lg:block"></span>
+                Eraser
+              </button>
+            </div>
+            <div class="toolbar-separator" role="presentation"></div>
+            <div class="toolbar-group" aria-label="Brush size">
+              <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Size</span>
+              <input
+                type="range"
+                id="brushSize"
+                min="1"
+                max="20"
+                value="3"
+                aria-label="Brush size"
+                class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200"
+              />
+              <span id="sizeDisplay" class="text-sm font-semibold text-slate-700">3</span>
+            </div>
+            <div class="toolbar-separator" role="presentation"></div>
+            <div class="toolbar-group" aria-label="Canvas actions">
+              <button
+                class="action-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
+                id="undoBtn"
+                title="Undo (⌘/Ctrl + Z)"
+                disabled
+              >
+                Undo
+              </button>
+              <button
+                class="action-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
+                id="redoBtn"
+                title="Redo (⇧ + ⌘/Ctrl + Z)"
+                disabled
+              >
+                Redo
+              </button>
+              <button
+                class="action-btn rounded-full border border-rose-200 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-600"
+                id="clearBtn"
+                title="Clear your drawing"
+              >
+                Clear
+              </button>
+            </div>
+            <div class="toolbar-bottom">
               <button
                 class="stylus-indicator rounded-full border border-slate-200 bg-emerald-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-800"
                 id="stylusToggle"
               >
-                Stylus mode (pen only)
+                Stylus only
+              </button>
+              <button
+                id="toolbarPositionToggle"
+                class="toolbar-toggle"
+                type="button"
+              >
+                Toolbar →
               </button>
             </div>
-
-            <div
-              class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-inner shadow-slate-200"
+          </aside>
+          <div class="canvas-area">
+            <span
+              id="status"
+              class="status-indicator inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-slate-600 ring-1 ring-slate-200"
+              aria-live="polite"
+              >Connecting…</span
             >
+            <div id="canvasWrapper" class="canvas-wrapper">
               <canvas
                 id="canvas"
                 width="800"
                 height="600"
-                class="block h-auto w-full max-w-full bg-white"
+                class="bg-white"
               ></canvas>
             </div>
           </div>
@@ -320,13 +474,14 @@
       Action completed
     </div>
 
-    <script>
-      window.SUPABASE_URL = "https://eytswszeopdxmtxxbkrb.supabase.co";
-      window.SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhpY3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
-    </script>
     <script type="module">
       import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm";
+
+      const SUPABASE_URL = window.SUPABASE_URL;
+      const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
+      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        throw new Error("Missing Supabase credentials. Check the inline configuration script.");
+      }
 
       const canvas = document.getElementById("canvas");
       const ctx = canvas.getContext("2d");
@@ -337,6 +492,96 @@
       const sessionInput = document.getElementById("sessionInput");
       const loginBtn = document.getElementById("loginBtn");
       const feedbackToast = document.getElementById("feedbackToast");
+      const toolbarPositionToggle = document.getElementById(
+        "toolbarPositionToggle",
+      );
+
+      window.addEventListener(
+        "wheel",
+        (event) => {
+          if (event.ctrlKey) {
+            event.preventDefault();
+          }
+        },
+        { passive: false },
+      );
+
+      window.addEventListener(
+        "keydown",
+        (event) => {
+          if (!(event.metaKey || event.ctrlKey)) return;
+          const key = event.key.toLowerCase();
+          if (key === "+" || key === "=" || key === "-" || key === "_" || key === "0") {
+            event.preventDefault();
+          }
+        },
+        true,
+      );
+
+      window.addEventListener(
+        "gesturestart",
+        (event) => {
+          event.preventDefault();
+        },
+        { passive: false },
+      );
+
+      window.addEventListener(
+        "gesturechange",
+        (event) => {
+          event.preventDefault();
+        },
+        { passive: false },
+      );
+
+      window.addEventListener(
+        "gestureend",
+        (event) => {
+          event.preventDefault();
+        },
+        { passive: false },
+      );
+
+      let toolbarPosition = "left";
+      try {
+        if (localStorage.getItem("student_toolbar_position") === "right") {
+          toolbarPosition = "right";
+        }
+      } catch (err) {
+        console.warn("Unable to read toolbar position preference", err);
+      }
+
+      function applyToolbarPosition(position) {
+        const body = document.body;
+        body.classList.toggle("toolbar-left", position === "left");
+        body.classList.toggle("toolbar-right", position === "right");
+        if (toolbarPositionToggle) {
+          toolbarPositionToggle.textContent =
+            position === "left" ? "Toolbar →" : "Toolbar ←";
+          toolbarPositionToggle.setAttribute(
+            "aria-label",
+            position === "left"
+              ? "Move toolbar to the right side"
+              : "Move toolbar to the left side",
+          );
+          toolbarPositionToggle.setAttribute(
+            "aria-pressed",
+            (position === "right").toString(),
+          );
+        }
+      }
+
+      applyToolbarPosition(toolbarPosition);
+
+      toolbarPositionToggle?.addEventListener("click", () => {
+        toolbarPosition = toolbarPosition === "left" ? "right" : "left";
+        try {
+          localStorage.setItem("student_toolbar_position", toolbarPosition);
+        } catch (err) {
+          console.warn("Unable to store toolbar position preference", err);
+        }
+        applyToolbarPosition(toolbarPosition);
+      });
 
       const statusStyles = {
         connecting:
@@ -351,17 +596,19 @@
 
       let supabase, channel;
       let username, sessionCode;
-      let isDrawing = false;
       let stylusOnly = true;
       let currentColor = "#000000";
       let currentTool = "pen";
       let brushSize = 3;
       let strokes = [];
-      let currentStroke = null;
       let historyStep = -1;
-      let lastPoint = null;
       let erasedStrokes = [];
       let isErasing = false;
+      let activeStroke = null;
+      let activePointerId = null;
+      let liveStrokePoints = [];
+      let lastErasePoint = null;
+      const teacherStrokes = new Map();
 
       const colorBtns = document.querySelectorAll(".color-btn");
       const toolBtns = document.querySelectorAll(".tool-btn");
@@ -373,13 +620,13 @@
       const stylusToggle = document.getElementById("stylusToggle");
 
       ctx.fillStyle = "white";
-      ctx.fillRect(0, 0, 800, 600);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
       function updateStatus(state, label) {
         status.textContent = label;
-        status.className = statusStyles[state] || statusStyles.idle;
+        status.className = `status-indicator ${statusStyles[state] || statusStyles.idle}`;
       }
 
       updateStatus("idle", "Waiting to connect");
@@ -399,6 +646,12 @@
           const sessionData = {
             strokes,
             historyStep,
+            teacherStrokes: Array.from(teacherStrokes.values()).map((stroke) => ({
+              id: stroke.id,
+              color: stroke.color,
+              size: stroke.size,
+              points: stroke.points.map((point) => ({ x: point.x, y: point.y })),
+            })),
             username,
             timestamp: Date.now(),
           };
@@ -418,8 +671,45 @@
           );
           if (savedData) {
             const data = JSON.parse(savedData);
-            strokes = data.strokes || [];
-            historyStep = data.historyStep ?? -1;
+            const storedStrokes = Array.isArray(data.strokes) ? data.strokes : [];
+            strokes = storedStrokes
+              .filter((stroke) => !stroke?.isTeacher)
+              .map((stroke) => {
+                if (stroke?.type === "erase") {
+                  const deletedIds = Array.isArray(stroke.deletedIds)
+                    ? [...new Set(stroke.deletedIds)]
+                    : [];
+                  return {
+                    id: stroke.id || `${Date.now()}-erase-restore`,
+                    type: "erase",
+                    deletedIds,
+                    deletedStrokes: (stroke.deletedStrokes || []).map((item) => ({
+                      ...item,
+                      points: (item.points || []).map((point) => ({ x: point.x, y: point.y })),
+                    })),
+                  };
+                }
+                return {
+                  id: stroke.id,
+                  color: stroke.color || "#111827",
+                  size: stroke.size || 3,
+                  points: (stroke.points || []).map((point) => ({ x: point.x, y: point.y })),
+                };
+              });
+            historyStep = Math.min(strokes.length - 1, data.historyStep ?? -1);
+            if (!Number.isFinite(historyStep)) {
+              historyStep = strokes.length - 1;
+            }
+            teacherStrokes.clear();
+            (data.teacherStrokes || []).forEach((stroke) => {
+              if (!stroke?.id || !stroke?.points) return;
+              teacherStrokes.set(stroke.id, {
+                id: stroke.id,
+                color: stroke.color || "#111827",
+                size: stroke.size || 3,
+                points: stroke.points.map((point) => ({ x: point.x, y: point.y })),
+              });
+            });
             redrawCanvas();
             updateHistoryButtons();
           }
@@ -432,7 +722,29 @@
         if (historyStep < strokes.length - 1) {
           strokes.length = historyStep + 1;
         }
-        strokes.push(stroke);
+
+        let storedStroke;
+        if (stroke?.type === "erase") {
+          const deletedIds = Array.from(new Set(stroke.deletedIds || []));
+          storedStroke = {
+            id: stroke.id || `${Date.now()}-erase`,
+            type: "erase",
+            deletedIds,
+            deletedStrokes: (stroke.deletedStrokes || []).map((item) => ({
+              ...item,
+              points: (item.points || []).map((point) => ({ x: point.x, y: point.y })),
+            })),
+          };
+        } else {
+          storedStroke = {
+            id: stroke.id,
+            color: stroke.color,
+            size: stroke.size,
+            points: (stroke.points || []).map((point) => ({ x: point.x, y: point.y })),
+          };
+        }
+
+        strokes.push(storedStroke);
         historyStep = strokes.length - 1;
         redrawCanvas();
         updateHistoryButtons();
@@ -452,7 +764,7 @@
           if (!item) continue;
           if (item.type === "erase") {
             item.deletedIds.forEach((id) => deletedIds.add(id));
-          } else if (!item.type && !item.isTeacher) {
+          } else if (!item?.type) {
             visibleIds.add(item.id);
           }
         }
@@ -466,7 +778,7 @@
         newVisibleIds.forEach((id) => {
           if (!oldVisibleIds.has(id)) {
             const stroke = strokes.find((s) => s.id === id);
-            if (stroke && !stroke.isTeacher) {
+            if (stroke) {
               added.push({
                 id: stroke.id,
                 color: stroke.color,
@@ -526,7 +838,7 @@
 
       function redrawCanvas() {
         ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, 800, 600);
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         const deletedIds = new Set();
         for (let i = 0; i <= historyStep; i++) {
           const action = strokes[i];
@@ -543,6 +855,10 @@
           if (deletedIds.has(stroke.id)) continue;
           drawStroke(stroke);
         }
+        teacherStrokes.forEach((stroke) => {
+          if (!stroke?.points?.length) return;
+          drawStroke(stroke);
+        });
       }
 
       function drawStroke(stroke) {
@@ -646,14 +962,20 @@
         sizeDisplay.textContent = brushSize;
       });
 
+      function syncStylusToggle() {
+        stylusToggle.classList.toggle("bg-emerald-100", stylusOnly);
+        stylusToggle.classList.toggle("text-emerald-800", stylusOnly);
+        stylusToggle.classList.toggle("bg-slate-200", !stylusOnly);
+        stylusToggle.classList.toggle("text-slate-700", !stylusOnly);
+        stylusToggle.textContent = stylusOnly ? "Stylus only" : "All inputs";
+      }
+
       stylusToggle.addEventListener("click", () => {
         stylusOnly = !stylusOnly;
-        stylusToggle.classList.toggle("bg-emerald-100/80", stylusOnly);
-        stylusToggle.classList.toggle("bg-slate-200/60", !stylusOnly);
-        stylusToggle.textContent = stylusOnly
-          ? "Stylus mode (pen only)"
-          : "All inputs enabled";
+        syncStylusToggle();
       });
+
+      syncStylusToggle();
 
       function handleHotkeys(event) {
         if (loginForm.classList.contains("hidden")) {
@@ -676,158 +998,215 @@
       }
       window.addEventListener("keydown", handleHotkeys);
 
-      canvas.addEventListener("pointerdown", (e) => {
-        if (!loginForm.classList.contains("hidden")) return;
-        if (stylusOnly && e.pointerType !== "pen") {
-          showFeedback("Stylus mode is active");
+      function getCanvasPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: (event.clientX - rect.left) * (canvas.width / rect.width),
+          y: (event.clientY - rect.top) * (canvas.height / rect.height),
+        };
+      }
+
+      function renderLiveStrokePreview() {
+        if (!activeStroke || liveStrokePoints.length === 0) {
+          redrawCanvas();
           return;
         }
 
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) * (800 / rect.width);
-        const y = (e.clientY - rect.top) * (600 / rect.height);
+        redrawCanvas();
+        drawStroke({
+          id: activeStroke.id,
+          color: activeStroke.color,
+          size: activeStroke.size,
+          points: liveStrokePoints,
+        });
+      }
+
+      function commitEraseAction() {
+        if (erasedStrokes.length === 0) return;
+        const eraseAction = {
+          id: `${Date.now()}-erase-${Math.random().toString(16).slice(2)}`,
+          type: "erase",
+          deletedStrokes: erasedStrokes.map((stroke) => ({
+            ...stroke,
+            points: (stroke.points || []).map((point) => ({ x: point.x, y: point.y })),
+          })),
+          deletedIds: erasedStrokes.map((stroke) => stroke.id),
+        };
+        addStroke(eraseAction);
+        const removedIds = eraseAction.deletedIds;
+        if (removedIds.length) {
+          channel?.send({
+            type: "broadcast",
+            event: "student_state_change",
+            payload: { username, added: [], removed: removedIds },
+          });
+          showFeedback(
+            `Erased ${removedIds.length} stroke${removedIds.length > 1 ? "s" : ""}`,
+          );
+        }
+        erasedStrokes = [];
+      }
+
+      function releasePointerCaptureSafely(pointerId) {
+        try {
+          if (pointerId != null) {
+            canvas.releasePointerCapture(pointerId);
+          }
+        } catch (err) {
+          // Ignore errors when releasePointerCapture is called without capture.
+        }
+      }
+
+      canvas.addEventListener("pointerdown", (event) => {
+        if (!loginForm.classList.contains("hidden")) return;
+        if (stylusOnly && event.pointerType !== "pen") {
+          showFeedback("Stylus only is active");
+          return;
+        }
+
+        event.preventDefault();
+
+        const point = getCanvasPoint(event);
+        activePointerId = event.pointerId;
+        canvas.setPointerCapture(activePointerId);
 
         if (currentTool === "eraser") {
           isErasing = true;
           erasedStrokes = [];
-          lastPoint = { x, y };
-          deleteStrokesInPath(x, y);
-        } else {
-          isDrawing = true;
-          lastPoint = { x, y };
-          currentStroke = {
-            id: Date.now() + "-" + Math.random(),
-            color: currentColor,
-            size: brushSize,
-            points: [{ x, y }],
-            isTeacher: false,
-          };
-
-          ctx.strokeStyle = currentColor;
-          ctx.lineWidth = brushSize;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-
-          channel?.send({
-            type: "broadcast",
-            event: "student_stroke_start",
-            payload: {
-              username,
-              stroke: {
-                id: currentStroke.id,
-                color: currentColor,
-                size: brushSize,
-              },
-            },
-          });
-        }
-      });
-
-      canvas.addEventListener("pointermove", (e) => {
-        if (!loginForm.classList.contains("hidden")) return;
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) * (800 / rect.width);
-        const y = (e.clientY - rect.top) * (600 / rect.height);
-
-        if (isErasing) {
-          deleteStrokesInPath(x, y);
-          lastPoint = { x, y };
+          lastErasePoint = point;
+          deleteStrokesInPath(point.x, point.y);
           return;
         }
 
-        if (!isDrawing || !currentStroke) return;
+        activeStroke = {
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          color: currentColor,
+          size: brushSize,
+        };
+        liveStrokePoints = [point];
+        renderLiveStrokePreview();
 
-        currentStroke.points.push({ x, y });
-        if (lastPoint) {
-          const midX = (lastPoint.x + x) / 2;
-          const midY = (lastPoint.y + y) / 2;
-          ctx.quadraticCurveTo(lastPoint.x, lastPoint.y, midX, midY);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(midX, midY);
+        channel?.send({
+          type: "broadcast",
+          event: "student_stroke_start",
+          payload: {
+            username,
+            stroke: {
+              id: activeStroke.id,
+              color: activeStroke.color,
+              size: activeStroke.size,
+            },
+          },
+        });
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        if (!loginForm.classList.contains("hidden")) return;
+        if (activePointerId !== event.pointerId) return;
+
+        const point = getCanvasPoint(event);
+
+        if (isErasing) {
+          event.preventDefault();
+          if (lastErasePoint) {
+            const distance = Math.hypot(
+              point.x - lastErasePoint.x,
+              point.y - lastErasePoint.y,
+            );
+            const steps = Math.max(1, Math.floor(distance / 8));
+            for (let i = 1; i <= steps; i++) {
+              const t = i / steps;
+              const interpX = lastErasePoint.x + (point.x - lastErasePoint.x) * t;
+              const interpY = lastErasePoint.y + (point.y - lastErasePoint.y) * t;
+              deleteStrokesInPath(interpX, interpY);
+            }
+          } else {
+            deleteStrokesInPath(point.x, point.y);
+          }
+          lastErasePoint = point;
+          return;
         }
-        lastPoint = { x, y };
+
+        if (!activeStroke) return;
+
+        event.preventDefault();
+
+        const lastPoint = liveStrokePoints[liveStrokePoints.length - 1];
+        if (!lastPoint || lastPoint.x !== point.x || lastPoint.y !== point.y) {
+          liveStrokePoints.push(point);
+        }
+
+        renderLiveStrokePreview();
 
         channel?.send({
           type: "broadcast",
           event: "student_stroke_point",
-          payload: { username, strokeId: currentStroke.id, x, y },
+          payload: { username, strokeId: activeStroke.id, x: point.x, y: point.y },
         });
       });
 
-      canvas.addEventListener("pointerup", () => {
+      function finalizePointerInteraction(event) {
         if (!loginForm.classList.contains("hidden")) return;
+        if (activePointerId !== event.pointerId) return;
+
         if (isErasing) {
+          commitEraseAction();
           isErasing = false;
-          lastPoint = null;
-          if (erasedStrokes.length > 0) {
-            const eraseAction = {
-              id: Date.now() + "-erase-" + Math.random(),
-              type: "erase",
-              deletedStrokes: [...erasedStrokes],
-              deletedIds: erasedStrokes.map((s) => s.id),
-            };
-            addStroke(eraseAction);
-            const removedIds = eraseAction.deletedIds;
-            if (removedIds.length && channel) {
-              channel.send({
-                type: "broadcast",
-                event: "student_state_change",
-                payload: { username, added: [], removed: removedIds },
-              });
-            }
-            showFeedback(
-              `Erased ${removedIds.length} stroke${removedIds.length > 1 ? "s" : ""}`,
-            );
-          }
+          lastErasePoint = null;
+          releasePointerCaptureSafely(activePointerId);
+          activePointerId = null;
+          updateHistoryButtons();
           return;
         }
 
-        if (!isDrawing || !currentStroke) return;
-
-        if (currentStroke.points.length === 1) {
-          const point = currentStroke.points[0];
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, brushSize / 2, 0, Math.PI * 2);
-          ctx.fillStyle = currentColor;
-          ctx.fill();
+        if (!activeStroke) {
+          releasePointerCaptureSafely(activePointerId);
+          activePointerId = null;
+          return;
         }
 
-        isDrawing = false;
-        lastPoint = null;
-        addStroke(currentStroke);
+        const finalizedStroke = {
+          id: activeStroke.id,
+          color: activeStroke.color,
+          size: activeStroke.size,
+          points: liveStrokePoints.map((point) => ({ x: point.x, y: point.y })),
+        };
+
+        activeStroke = null;
+        liveStrokePoints = [];
+        releasePointerCaptureSafely(activePointerId);
+        activePointerId = null;
+
+        addStroke(finalizedStroke);
+
         channel?.send({
           type: "broadcast",
           event: "student_stroke_end",
-          payload: {
-            username,
-            stroke: {
-              id: currentStroke.id,
-              color: currentStroke.color,
-              size: currentStroke.size,
-              points: currentStroke.points,
-            },
-          },
+          payload: { username, stroke: finalizedStroke },
         });
-        currentStroke = null;
-      });
+      }
 
-      canvas.addEventListener("pointerleave", () => {
+      canvas.addEventListener("pointerup", finalizePointerInteraction);
+      canvas.addEventListener("pointercancel", finalizePointerInteraction);
+
+      canvas.addEventListener("pointerleave", (event) => {
         if (!loginForm.classList.contains("hidden")) return;
+        if (activePointerId !== event.pointerId) return;
+
         if (isErasing) {
+          commitEraseAction();
           isErasing = false;
-          lastPoint = null;
-          if (erasedStrokes.length > 0) {
-            updateHistoryButtons();
-          }
-          return;
+          erasedStrokes = [];
+          lastErasePoint = null;
+          updateHistoryButtons();
+        } else {
+          activeStroke = null;
+          liveStrokePoints = [];
+          redrawCanvas();
         }
-        if (!isDrawing) return;
-        isDrawing = false;
-        lastPoint = null;
-        currentStroke = null;
+
+        releasePointerCaptureSafely(activePointerId);
+        activePointerId = null;
       });
 
       function deleteStrokesInPath(x, y) {
@@ -842,7 +1221,7 @@
         }
         for (let i = historyStep; i >= 0; i--) {
           const stroke = strokes[i];
-          if (!stroke || stroke.isTeacher || stroke.type === "erase") continue;
+          if (!stroke || stroke.type === "erase") continue;
           if (currentlyDeletedIds.has(stroke.id)) continue;
           if (erasedStrokes.find((e) => e.id === stroke.id)) continue;
           let shouldDelete = false;
@@ -912,10 +1291,10 @@
         updateStatus("connecting", "Connecting…");
 
         try {
-          supabase = createClient(
-            window.SUPABASE_URL,
-            window.SUPABASE_ANON_KEY,
-          );
+          const supabaseUrl = SUPABASE_URL;
+          const anonKey = SUPABASE_ANON_KEY;
+
+          supabase = createClient(supabaseUrl, anonKey);
           channel = supabase.channel(`minimal-${sessionCode}`, {
             config: { broadcast: { ack: false } },
           });
@@ -925,14 +1304,19 @@
             { event: "teacher_stroke_end" },
             ({ payload }) => {
               if (payload.target !== username) return;
-              const teacherStroke = {
+              if (!payload.stroke?.id) return;
+              const stroke = {
                 id: payload.stroke.id,
-                color: payload.stroke.color,
-                size: payload.stroke.size,
-                points: payload.stroke.points,
-                isTeacher: true,
+                color: payload.stroke.color || "#111827",
+                size: payload.stroke.size || 3,
+                points: (payload.stroke.points || []).map((point) => ({
+                  x: point.x,
+                  y: point.y,
+                })),
               };
-              addStroke(teacherStroke);
+              teacherStrokes.set(stroke.id, stroke);
+              redrawCanvas();
+              saveToSession();
             },
           );
 
@@ -941,32 +1325,23 @@
             { event: "teacher_state_change" },
             ({ payload }) => {
               if (payload.target !== username) return;
-              payload.added.forEach((annotationData) => {
-                if (!strokes.find((s) => s.id === annotationData.id)) {
-                  const annotation = {
-                    id: annotationData.id,
-                    color: annotationData.color,
-                    size: annotationData.size,
-                    points: annotationData.points,
-                    isTeacher: true,
-                  };
-                  strokes.push(annotation);
-                  historyStep = strokes.length - 1;
-                }
+              (payload.added || []).forEach((annotationData) => {
+                if (!annotationData?.id) return;
+                teacherStrokes.set(annotationData.id, {
+                  id: annotationData.id,
+                  color: annotationData.color || "#111827",
+                  size: annotationData.size || 3,
+                  points: (annotationData.points || []).map((point) => ({
+                    x: point.x,
+                    y: point.y,
+                  })),
+                });
               });
-              payload.removed.forEach((id) => {
-                const index = strokes.findIndex(
-                  (s) => s.id === id && s.isTeacher,
-                );
-                if (index >= 0) {
-                  strokes.splice(index, 1);
-                  if (historyStep >= index) {
-                    historyStep = Math.max(-1, historyStep - 1);
-                  }
-                }
+              (payload.removed || []).forEach((id) => {
+                if (!id) return;
+                teacherStrokes.delete(id);
               });
               redrawCanvas();
-              updateHistoryButtons();
               saveToSession();
             },
           );
@@ -976,22 +1351,20 @@
             { event: "teacher_stroke_delete" },
             ({ payload }) => {
               if (payload.target !== username) return;
-              const index = strokes.findIndex((s) => s.id === payload.strokeId);
-              if (index >= 0) {
-                strokes.splice(index, 1);
-                historyStep = strokes.length - 1;
+              if (!payload.strokeId) return;
+              const removed = teacherStrokes.delete(payload.strokeId);
+              if (removed) {
                 redrawCanvas();
-                updateHistoryButtons();
+                saveToSession();
               }
             },
           );
 
           channel.on("broadcast", { event: "teacher_clear" }, ({ payload }) => {
             if (payload.target !== username) return;
-            strokes = strokes.filter((s) => !s.isTeacher);
-            historyStep = Math.min(historyStep, strokes.length - 1);
+            teacherStrokes.clear();
             redrawCanvas();
-            updateHistoryButtons();
+            saveToSession();
           });
 
           channel.subscribe(async (channelStatus) => {
@@ -1010,12 +1383,19 @@
 
           loginForm.classList.add("hidden");
           appContainer.classList.remove("hidden");
+          document.body.classList.add("drawing-active");
           loadFromSession();
         } catch (err) {
           console.error("Login failed", err);
-          updateStatus("error", "Connection failed");
+          const message =
+            err?.message || "Connection failed. Check your Supabase settings.";
+          updateStatus("error", message);
+          if (err?.message?.includes("Supabase")) {
+            alert(message);
+          }
           loginBtn.disabled = false;
           loginBtn.textContent = "Join session";
+          document.body.classList.remove("drawing-active");
           return;
         }
       }
