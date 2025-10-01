@@ -11,6 +11,7 @@ const emptyState = document.getElementById('emptyState');
 const modal = document.getElementById('modal');
 const closeModalBtn = document.getElementById('closeModal');
 const modalTitle = document.getElementById('modalTitle');
+const teacherClearBtnEl = document.getElementById('teacherClearBtn');
 
 const STORAGE_KEY = 'liveDrawing.teacherSession';
 const presenceChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('classroom-presence') : null;
@@ -23,7 +24,7 @@ const teacherCanvasApp = initCanvasApp({
   toolButtons: [...document.querySelectorAll('#teacherCanvasApp [data-tool]')],
   undoButton: document.getElementById('teacherUndoBtn'),
   redoButton: document.getElementById('teacherRedoBtn'),
-  clearButton: document.getElementById('teacherClearBtn'),
+  clearButton: teacherClearBtnEl,
   stylusToggle: document.getElementById('teacherStylusBtn'),
   sizeSlider: document.getElementById('teacherBrush'),
   sizeLabel: document.getElementById('teacherSizeLabel'),
@@ -33,11 +34,197 @@ const teacherCanvasApp = initCanvasApp({
   role: 'teacher',
   remoteLabel: 'student',
   channelName: 'classroom-canvas',
+  broadcastPayloadFormatter: (path) => ({
+    path,
+    teacher: true,
+    targetStudentId: activeStudentId ?? null,
+    session: currentSession ?? null,
+  }),
+  onPathCommitted: (path) => {
+    if(activeStudentId){
+      appendPathToPreview(activeStudentId, path);
+      const record = studentMap.get(activeStudentId);
+      if(record){
+        const updated = { ...record, lastSeen: Date.now() };
+        studentMap.set(activeStudentId, updated);
+        if(currentSession && updated.session === currentSession){
+          renderStudents();
+        }
+      }
+    }
+  },
+  onRemotePath: (path, message = {}) => {
+    if(!message.studentId) return;
+    const record = upsertStudent({
+      id: message.studentId,
+      name: message.studentName,
+      session: message.session,
+      lastSeen: Date.now(),
+    });
+    const sessionCode = (message.session || record?.session || '').trim().toUpperCase();
+    if(currentSession && sessionCode && sessionCode !== currentSession){
+      return;
+    }
+    appendPathToPreview(message.studentId, path);
+    if(currentSession && record?.session === currentSession){
+      renderStudents();
+    }
+  },
+  shouldAcceptRemotePath: (message) => {
+    const sessionCode = (message.session || '').trim().toUpperCase();
+    if(currentSession && sessionCode && sessionCode !== currentSession){
+      return false;
+    }
+    return true;
+  },
 });
 
 let currentSession = null;
 const studentMap = new Map();
 let activeStudentId = null;
+const previewMap = new Map();
+
+const clonePreviewPath = (path) => ({
+  color: path.color,
+  width: path.width,
+  erase: !!path.erase,
+  points: (path.points || []).map((pt) => ({ x: pt.x, y: pt.y })),
+});
+
+function resetPreview(entry){
+  if(!entry) return;
+  const { ctx, canvas } = entry;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+function drawPreviewPath(ctx, path){
+  const pts = path.points || [];
+  if(!pts.length) return;
+  const width = path.width || 1;
+  ctx.save();
+  ctx.globalCompositeOperation = path.erase ? 'destination-out' : 'source-over';
+  if(pts.length === 1){
+    const radius = Math.max(0.45 * width, Math.min(0.8 * width, 0.5 * width));
+    ctx.beginPath();
+    ctx.arc(pts[0].x, pts[0].y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = path.erase ? '#000' : path.color || '#111827';
+    ctx.fill();
+  }else{
+    ctx.strokeStyle = path.erase ? '#000' : path.color || '#111827';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for(let i = 1; i < pts.length; i++){
+      ctx.lineTo(pts[i].x, pts[i].y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function renderPreview(entry){
+  if(!entry) return;
+  resetPreview(entry);
+  entry.paths.forEach((path) => drawPreviewPath(entry.ctx, path));
+}
+
+function ensureStudentPreview(studentOrId){
+  const id = typeof studentOrId === 'string' ? studentOrId : studentOrId?.id;
+  if(!id) return null;
+  let entry = previewMap.get(id);
+  if(entry){
+    if(studentOrId && typeof studentOrId === 'object'){
+      updatePreviewLabel(studentOrId);
+    }
+    return entry;
+  }
+  const stage = document.createElement('div');
+  stage.className = 'relative aspect-[4/3] w-full overflow-hidden rounded-[20px] border border-slate-200 bg-slate-950/80 shadow-inner';
+  stage.dataset.studentId = id;
+  const canvas = document.createElement('canvas');
+  canvas.width = 800;
+  canvas.height = 600;
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  stage.appendChild(canvas);
+  const label = document.createElement('span');
+  label.className = 'absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 shadow';
+  label.textContent = studentOrId?.name ? `${studentOrId.name} · Preview` : 'Live preview';
+  stage.appendChild(label);
+  const ctx = canvas.getContext('2d', { alpha:false });
+  entry = { stage, canvas, ctx, paths: [], label };
+  resetPreview(entry);
+  previewMap.set(id, entry);
+  return entry;
+}
+
+function updatePreviewLabel(student){
+  if(!student?.id) return;
+  const entry = previewMap.get(student.id);
+  if(entry?.label){
+    entry.label.textContent = student.name ? `${student.name} · Preview` : 'Live preview';
+  }
+}
+
+function appendPathToPreview(studentId, path){
+  if(!studentId || !path) return;
+  const student = studentMap.get(studentId) || { id: studentId };
+  const entry = ensureStudentPreview(student);
+  if(!entry) return;
+  entry.paths.push(clonePreviewPath(path));
+  if(entry.paths.length > 500){
+    entry.paths.splice(0, entry.paths.length - 500);
+  }
+  renderPreview(entry);
+}
+
+function clearPreview(studentId){
+  const entry = previewMap.get(studentId);
+  if(!entry) return;
+  entry.paths = [];
+  resetPreview(entry);
+}
+
+function removePreview(studentId){
+  const entry = previewMap.get(studentId);
+  if(!entry) return;
+  entry.stage.remove();
+  previewMap.delete(studentId);
+}
+
+function upsertStudent(student){
+  if(!student || !student.id) return null;
+  const existing = studentMap.get(student.id) || {};
+  const normalizedSession = (student.session || existing.session || '').trim().toUpperCase();
+  const normalizedName = (student.name || existing.name || '').trim();
+  const sessionChanged = Boolean(existing.session) && normalizedSession && normalizedSession !== existing.session;
+  const record = {
+    id: student.id,
+    name: normalizedName,
+    session: normalizedSession,
+    lastSeen: student.lastSeen || Date.now(),
+  };
+  studentMap.set(student.id, record);
+  updatePreviewLabel(record);
+  if(sessionChanged){
+    clearPreview(student.id);
+  }
+  return record;
+}
+
+if(teacherClearBtnEl){
+  teacherClearBtnEl.addEventListener('click', () => {
+    if(activeStudentId){
+      clearPreview(activeStudentId);
+    }
+  });
+}
 
 function setStatus(text, variant = 'idle'){
   if(!statusBadge) return;
@@ -62,6 +249,12 @@ function pruneStudents(){
   for(const [id, student] of studentMap.entries()){
     if(student.session !== currentSession){
       studentMap.delete(id);
+      removePreview(id);
+    }
+  }
+  for(const id of [...previewMap.keys()]){
+    if(!studentMap.has(id)){
+      removePreview(id);
     }
   }
 }
@@ -76,7 +269,8 @@ function createStudentCard(student){
   const identity = document.createElement('div');
   const nameEl = document.createElement('p');
   nameEl.className = 'text-lg font-semibold text-slate-900';
-  nameEl.textContent = student.name;
+  const displayName = student.name || 'Unnamed student';
+  nameEl.textContent = displayName;
   const detailEl = document.createElement('p');
   detailEl.className = 'text-sm text-slate-500';
   const timestamp = student.lastSeen || Date.now();
@@ -86,7 +280,7 @@ function createStudentCard(student){
 
   const badge = document.createElement('span');
   badge.className = 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700';
-  badge.textContent = student.session;
+  badge.textContent = student.session || '—';
 
   header.append(identity, badge);
 
@@ -105,7 +299,13 @@ function createStudentCard(student){
 
   actionRow.append(annotateBtn, statusHint);
 
-  card.append(header, actionRow);
+  const preview = ensureStudentPreview(student);
+
+  card.append(header);
+  if(preview){
+    card.append(preview.stage);
+  }
+  card.append(actionRow);
   return card;
 }
 
@@ -143,8 +343,12 @@ function openModal(student){
   if(!modal || !modalTitle) return;
   activeStudentId = student.id;
   modalTitle.textContent = `Annotating ${student.name}`;
+  ensureStudentPreview(student);
   modal.classList.remove('invisible', 'pointer-events-none');
   document.body.classList.add('overflow-hidden');
+  if(teacherCanvasApp?.refreshLayout){
+    requestAnimationFrame(() => teacherCanvasApp.refreshLayout());
+  }
 }
 
 function closeModalView(){
@@ -202,18 +406,20 @@ if(presenceChannel){
     if(msg.type === 'student-joined' && msg.student){
       const { student } = msg;
       if(!student.id) return;
-      studentMap.set(student.id, {
-        ...student,
-        lastSeen: Date.now(),
-      });
-      if(currentSession && student.session === currentSession){
-        renderStudents();
+      const record = upsertStudent({ ...student, lastSeen: Date.now() });
+      if(record){
+        ensureStudentPreview(record);
+        if(currentSession && record.session === currentSession){
+          renderStudents();
+        }
       }
     }else if(msg.type === 'student-left' && msg.student){
       const { student } = msg;
       if(!student.id) return;
+      const existing = studentMap.get(student.id);
       studentMap.delete(student.id);
-      if(currentSession){
+      removePreview(student.id);
+      if(currentSession && existing?.session === currentSession){
         renderStudents();
       }
     }

@@ -13,6 +13,8 @@ const loginError = document.getElementById('loginError');
 const STORAGE_KEY = 'liveDrawing.student';
 const presenceChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('classroom-presence') : null;
 
+let currentStudent = null;
+
 const canvasApp = initCanvasApp({
   root: document.getElementById('studentCanvasApp'),
   stage: document.getElementById('studentStage'),
@@ -31,9 +33,23 @@ const canvasApp = initCanvasApp({
   role: 'student',
   remoteLabel: 'teacher',
   channelName: 'classroom-canvas',
+  broadcastPayloadFormatter: (path) => ({
+    path,
+    studentId: currentStudent?.id ?? null,
+    studentName: currentStudent?.name ?? null,
+    session: currentStudent?.session ?? null,
+  }),
+  shouldAcceptRemotePath: (message) => {
+    const sessionCode = (message.session || '').trim().toUpperCase();
+    if(currentStudent?.session && sessionCode && sessionCode !== currentStudent.session){
+      return false;
+    }
+    if(message.targetStudentId){
+      return currentStudent?.id === message.targetStudentId;
+    }
+    return true;
+  },
 });
-
-let currentStudent = null;
 
 function showApp(){
   if(loginForm){
@@ -41,6 +57,9 @@ function showApp(){
   }
   if(appContainer){
     appContainer.classList.remove('hidden');
+  }
+  if(canvasApp?.refreshLayout){
+    requestAnimationFrame(() => canvasApp.refreshLayout());
   }
 }
 

@@ -27,6 +27,9 @@ export function initCanvasApp(options){
     statusText,
     channelName = 'canvas-sync',
     broadcastPayloadFormatter,
+    onPathCommitted,
+    onRemotePath,
+    shouldAcceptRemotePath,
   } = options ?? {};
 
   if(!root || !stage || !canvas){
@@ -91,6 +94,13 @@ export function initCanvasApp(options){
     const scale = Math.min(availW / cfg.width, availH / cfg.height, 1);
     canvas.style.width = (cfg.width * scale) + 'px';
     canvas.style.height = (cfg.height * scale) + 'px';
+  }
+
+  const stageObserver = typeof ResizeObserver === 'function'
+    ? new ResizeObserver(() => fitCanvasToStage())
+    : null;
+  if(stageObserver){
+    stageObserver.observe(stage);
   }
 
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
@@ -236,8 +246,24 @@ export function initCanvasApp(options){
 
   function broadcastStroke(path){
     if(!channel) return;
-    const payload = broadcastPayloadFormatter ? broadcastPayloadFormatter(path, { role }) : deepClonePath(path);
-    channel.postMessage({ type: 'strokeComplete', from: role, path: payload });
+    const basePath = deepClonePath(path);
+    let extra = {};
+    if(typeof broadcastPayloadFormatter === 'function'){
+      try{
+        extra = broadcastPayloadFormatter(basePath, { role }) || {};
+      }catch(err){
+        console.warn('broadcastPayloadFormatter error', err);
+        extra = {};
+      }
+    }
+    const message = { type: 'strokeComplete', from: role, path: basePath };
+    if(extra && typeof extra === 'object'){
+      Object.assign(message, extra);
+      if(Object.prototype.hasOwnProperty.call(extra, 'path') && extra.path){
+        message.path = extra.path;
+      }
+    }
+    channel.postMessage(message);
     showStatus(`Stroke sent to ${role === 'teacher' ? 'students' : 'teacher'}`, 'sent');
   }
 
@@ -247,12 +273,15 @@ export function initCanvasApp(options){
     state.redoStack.length = 0;
     renderAll();
     updateHistoryUI();
+    if(typeof onPathCommitted === 'function'){
+      onPathCommitted(deepClonePath(path));
+    }
     if(broadcast){
       broadcastStroke(path);
     }
   }
 
-  function applyRemotePath(path){
+  function applyRemotePath(path, message){
     const pathCopy = deepClonePath(path);
     state.paths.push(pathCopy);
     state.undoStack.push({ type: 'draw', path: pathCopy });
@@ -260,6 +289,9 @@ export function initCanvasApp(options){
     renderAll();
     updateHistoryUI();
     showStatus(`Stroke received from ${options.remoteLabel ?? 'peer'}`, 'received');
+    if(typeof onRemotePath === 'function'){
+      onRemotePath(deepClonePath(pathCopy), message || {});
+    }
   }
 
   function eraseAt(pt){
@@ -488,7 +520,10 @@ export function initCanvasApp(options){
     const msg = event?.data;
     if(!msg || msg.from === role) return;
     if(msg.type === 'strokeComplete' && msg.path){
-      applyRemotePath(msg.path);
+      if(typeof shouldAcceptRemotePath === 'function' && !shouldAcceptRemotePath(msg)){
+        return;
+      }
+      applyRemotePath(msg.path, msg);
     }
   }
 
@@ -502,6 +537,7 @@ export function initCanvasApp(options){
   updateSizeUI();
   updateHistoryUI();
   fitCanvasToStage();
+  requestAnimationFrame(() => fitCanvasToStage());
   showStatus('Ready');
 
   window.addEventListener('resize', fitCanvasToStage);
@@ -521,12 +557,18 @@ export function initCanvasApp(options){
         channel.removeEventListener('message', handleMessage);
         channel.close();
       }
+      if(stageObserver){
+        stageObserver.disconnect();
+      }
     },
     getState(){
       return {
         tool: { ...tool },
         paths: deepClonePaths(state.paths),
       };
+    },
+    refreshLayout(){
+      fitCanvasToStage();
     },
   };
 }
