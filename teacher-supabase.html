@@ -3,19 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Teacher - Minimal</title>
+  <title>Teacher - Full Dashboard</title>
   <style>
-    /* --- your styles unchanged --- */
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); min-height: 100vh; color: white; padding: 32px 24px; }
-    .header { background: rgba(255,255,255,0.12); backdrop-filter: blur(10px); padding:32px; border-radius:24px; margin-bottom:32px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
-    /* (rest of your CSS trimmed for brevity, keep as-is) */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      min-height: 100vh;
+      color: white;
+      padding: 32px 24px;
+    }
+    .header {
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(10px);
+      padding: 32px;
+      border-radius: 24px;
+      margin-bottom: 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 { font-size: 32px; font-weight: 700; margin-bottom: 24px; letter-spacing: -0.5px; }
+    .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .header input {
+      padding: 14px 18px; font-size: 16px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 12px; background: rgba(255,255,255,0.95);
+      min-width: 200px; font-weight: 500;
+    }
+    .header button {
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
+      color: white; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+    }
+    #sessionInfo {
+      margin-top: 20px; padding: 20px;
+      background: rgba(16,185,129,0.15);
+      border-radius: 12px; display: none;
+      border: 2px solid rgba(16,185,129,0.3);
+    }
+    #sessionInfo.active { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
+    #status { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+    #status.connecting { background: rgba(251,146,60,0.9); }
+    #status.connected { background: rgba(34,197,94,0.9); }
+    #status.error { background: rgba(239,68,68,0.9); }
+    #students { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:24px; margin-top:32px; }
+    .student-card {
+      background:white; border-radius:20px; padding:20px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.3);
+    }
+    .student-card h3 { color:#1e293b; margin-bottom:16px; font-size:18px; font-weight:700; display:flex; gap:8px; }
+    .student-card canvas {
+      width:100%; border:3px solid #e5e7eb; border-radius:12px;
+      display:block; margin-bottom:16px; background:white;
+    }
+    .student-card button {
+      width:100%; padding:14px; background:linear-gradient(135deg,#dc2626 0%,#ef4444 100%);
+      color:white; border:none; border-radius:12px; font-weight:600; font-size:15px;
+    }
+    /* Modal */
+    #modal {
+      display:none; position:fixed; inset:0;
+      background:rgba(0,0,0,0.95); backdrop-filter:blur(20px);
+      z-index:1000; padding:32px;
+    }
+    #modal.open { display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    #canvasWrapper { position:relative; background:white; border-radius:20px; padding:32px; }
+    #bigCanvas, #overlay { display:block; max-width:90vw; max-height:70vh; border-radius:16px; }
+    #overlay { position:absolute; top:32px; left:32px; pointer-events:auto; cursor:crosshair; }
+    .toolbar { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; background:white; padding:8px 12px; border-radius:9999px; }
+    .color-btn { width:32px; height:32px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
+    .color-btn.active { border-color:#1e3a8a; }
+    .tool-btn { padding:6px 12px; border:1px solid #cbd5e1; border-radius:20px; background:white; cursor:pointer; }
+    .tool-btn.active { background:#1e3a8a; color:white; }
+    .action-btn { padding:6px 12px; border-radius:20px; background:#f1f5f9; cursor:pointer; }
+    .action-btn.clear { color:#dc2626; }
+    #stylusToggle { padding:6px 12px; border-radius:20px; background:#bfdbfe; cursor:pointer; }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>📊 Teacher Dashboard</h1>
     <div class="controls">
-      <input type="text" id="sessionInput" placeholder="Session code" maxlength="10" value="TEST123">
+      <input type="text" id="sessionInput" value="TEST123">
       <button id="startSessionBtn">Start Session</button>
       <span id="status" class="connecting">Not connected</span>
     </div>
@@ -26,141 +95,154 @@
   </div>
 
   <div id="students"></div>
-  <div class="empty-state" id="emptyState">
-    <p>👥 Waiting for students...</p>
-    <small>Share the session code TEST123 with your students</small>
+  <div id="emptyState">👥 Waiting for students...</div>
+
+  <div id="modal">
+    <div style="margin-bottom:12px;display:flex;justify-content:space-between;width:820px;color:white;">
+      <h2 id="modalTitle">Annotating Student</h2>
+      <button id="closeModal">Close</button>
+    </div>
+    <div id="canvasWrapper">
+      <canvas id="bigCanvas" width="800" height="600"></canvas>
+      <canvas id="overlay" width="800" height="600"></canvas>
+    </div>
+    <div class="toolbar">
+      <div>
+        <div class="color-btn active" style="background:#dc2626" data-color="#dc2626"></div>
+        <div class="color-btn" style="background:#9333ea" data-color="#9333ea"></div>
+        <div class="color-btn" style="background:#14b8a6" data-color="#14b8a6"></div>
+      </div>
+      <button class="tool-btn active" data-tool="pen">Pen</button>
+      <button class="tool-btn" data-tool="eraser">Eraser</button>
+      <input type="range" id="brushSize" min="1" max="24" value="4">
+      <span id="sizeDisplay">4</span>
+      <button class="action-btn" id="undoBtn" disabled>Undo</button>
+      <button class="action-btn" id="redoBtn" disabled>Redo</button>
+      <button class="action-btn clear" id="clearBtn">Clear</button>
+      <div id="stylusToggle">Stylus mode (pen only)</div>
+    </div>
   </div>
 
-  <!-- Modal for annotation -->
-  <div id="modal"> … (keep your modal + toolbar markup unchanged) … </div>
-
   <script>
-    // ✅ Correct Supabase configuration
+    // 🔑 Replace with the real anon key from your Supabase project
     window.SUPABASE_URL = "https://eytswszeopdxmtxxbkrb.supabase.co";
-    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhi a3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
-    // (this is the same anon key you used in the working student file — note the ref matches eytswszeopdxmtxxbkrb)
+    window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhia3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
   </script>
 
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm';
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/+esm";
 
-    const studentsDiv = document.getElementById('students');
-    const emptyState = document.getElementById('emptyState');
-    const modal = document.getElementById('modal');
-    const bigCanvas = document.getElementById('bigCanvas');
-    const bigCtx = bigCanvas.getContext('2d');
-    const overlay = document.getElementById('overlay');
-    const overlayCtx = overlay.getContext('2d');
-    const modalTitle = document.getElementById('modalTitle');
-    const closeModal = document.getElementById('closeModal');
-    const status = document.getElementById('status');
-    const sessionInfo = document.getElementById('sessionInfo');
-    const sessionCodeDisplay = document.getElementById('sessionCode');
-    const studentCount = document.getElementById('studentCount');
-    const sessionInput = document.getElementById('sessionInput');
-    const startSessionBtn = document.getElementById('startSessionBtn');
+    window.addEventListener("DOMContentLoaded", () => {
+      const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-    let supabase, channel;
-    let sessionCode;
-    let students = new Map();
+      const studentsDiv=document.getElementById("students"),
+            emptyState=document.getElementById("emptyState"),
+            modal=document.getElementById("modal"),
+            bigCanvas=document.getElementById("bigCanvas"),
+            bigCtx=bigCanvas.getContext("2d"),
+            overlay=document.getElementById("overlay"),
+            overlayCtx=overlay.getContext("2d"),
+            modalTitle=document.getElementById("modalTitle"),
+            closeModal=document.getElementById("closeModal"),
+            status=document.getElementById("status"),
+            sessionInfo=document.getElementById("sessionInfo"),
+            sessionCodeDisplay=document.getElementById("sessionCode"),
+            studentCount=document.getElementById("studentCount"),
+            sessionInput=document.getElementById("sessionInput"),
+            startSessionBtn=document.getElementById("startSessionBtn");
 
-    window.addEventListener('DOMContentLoaded', () => {
-      sessionInput.value = 'TEST123';
-      setTimeout(startSession, 100);
-    });
+      let channel,sessionCode,currentStudent=null;
+      const students=new Map();
 
-    async function startSession() {
-      sessionCode = sessionInput.value.trim().toUpperCase();
-      if (!sessionCode) { alert('Please enter a session code'); return; }
+      // Toolbar state
+      let currentColor="#dc2626", currentTool="pen", brushSize=4, stylusOnly=true;
+      let annotationHistory=[],annotationHistoryStep=-1;
+      let activeStroke=null,pointerId=null,buffer=[],rafId=null;
 
-      sessionInput.disabled = true;
-      startSessionBtn.disabled = true;
-      await setupSupabase();
-    }
+      function startSession(){
+        sessionCode=sessionInput.value.trim().toUpperCase();
+        channel=supabase.channel(`minimal-${sessionCode}`,{config:{broadcast:{ack:false}}});
+        channel.on("broadcast",{event:"student_ready"},({payload})=>addStudent(payload.username));
+        channel.on("broadcast",{event:"student_stroke_end"},({payload})=>{
+          const s=students.get(payload.username); if(!s) return;
+          s.strokes.push(payload.stroke); redrawStudentCanvas(s);
+        });
+        channel.subscribe((st)=>{
+          if(st==="SUBSCRIBED"){ status.textContent="Connected"; status.className="connected"; sessionInfo.classList.add("active"); sessionCodeDisplay.textContent=sessionCode; }
+        });
+      }
+      startSessionBtn.onclick=startSession;
 
-    async function setupSupabase() {
-      status.textContent = 'Connecting...';
-      status.className = 'connecting';
+      function addStudent(username){
+        if(students.has(username)) return;
+        emptyState.style.display="none";
+        const canvas=document.createElement("canvas"); canvas.width=800; canvas.height=600;
+        const ctx=canvas.getContext("2d"); ctx.fillStyle="white"; ctx.fillRect(0,0,800,600);
+        const student={username,canvas,ctx,strokes:[],teacherAnnotations:[]};
+        students.set(username,student);
+        const card=document.createElement("div"); card.className="student-card";
+        card.innerHTML=`<h3>${username}</h3><canvas width="800" height="600"></canvas><button>Annotate</button>`;
+        card.querySelector("button").onclick=()=>annotate(username);
+        studentsDiv.appendChild(card);
+        studentCount.textContent=students.size;
+      }
 
-      supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
-      channel = supabase.channel(`minimal-${sessionCode}`, { config: { broadcast: { ack: false } } });
-
-      channel.on('broadcast', { event: 'student_ready' }, ({ payload }) => {
-        addStudent(payload.username);
-      });
-
-      channel.on('broadcast', { event: 'student_stroke_end' }, ({ payload }) => {
-        const student = students.get(payload.username);
-        if (student) {
-          student.strokes.push({
-            id: payload.stroke.id,
-            color: payload.stroke.color,
-            size: payload.stroke.size,
-            points: payload.stroke.points
-          });
-          redrawStudentCanvas(student);
-        }
-      });
-
-      channel.subscribe((st) => {
-        if (st === 'SUBSCRIBED') {
-          status.textContent = 'Connected';
-          status.className = 'connected';
-          sessionInfo.classList.add('active');
-          sessionCodeDisplay.textContent = sessionCode;
-        } else if (st === 'CHANNEL_ERROR') {
-          status.textContent = 'Connection error';
-          status.className = 'error';
-        }
-      });
-    }
-
-    function addStudent(username) {
-      if (students.has(username)) return;
-      emptyState.style.display = 'none';
-
-      const canvas = document.createElement('canvas');
-      canvas.width = 800; canvas.height = 600;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = 'white'; ctx.fillRect(0,0,800,600);
-
-      students.set(username, { username, canvas, ctx, strokes: [] });
-
-      const card = document.createElement('div');
-      card.className = 'student-card';
-      card.innerHTML = `<h3>${username}</h3>
-        <canvas width="800" height="600"></canvas>
-        <button onclick="annotate('${username}')">View & Annotate</button>`;
-      studentsDiv.appendChild(card);
-      studentCount.textContent = students.size;
-    }
-
-    function redrawStudentCanvas(student) {
-      const ctx = student.ctx;
-      ctx.fillStyle = 'white'; ctx.fillRect(0,0,800,600);
-      student.strokes.forEach(stroke => {
-        if (!stroke.points.length) return;
-        ctx.strokeStyle = stroke.color; ctx.lineWidth = stroke.size;
-        ctx.beginPath(); ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (let i=1;i<stroke.points.length;i++) {
-          const p=stroke.points[i-1], c=stroke.points[i];
-          ctx.quadraticCurveTo(p.x,p.y,(p.x+c.x)/2,(p.y+c.y)/2);
-        }
+      function redrawStudentCanvas(student){
+        const ctx=student.ctx; ctx.fillStyle="white"; ctx.fillRect(0,0,800,600);
+        student.strokes.forEach(stk=>drawStroke(ctx,stk));
+        const card=Array.from(studentsDiv.children).find(c=>c.querySelector("h3").textContent===student.username);
+        if(card){ card.querySelector("canvas").getContext("2d").drawImage(student.canvas,0,0); }
+      }
+      function drawStroke(ctx,stk){
+        if(!stk.points?.length) return;
+        ctx.strokeStyle=stk.color; ctx.lineWidth=stk.size;
+        ctx.beginPath(); ctx.moveTo(stk.points[0].x,stk.points[0].y);
+        for(let i=1;i<stk.points.length;i++){ const p=stk.points[i-1],c=stk.points[i]; const mx=(p.x+c.x)/2,my=(p.y+c.y)/2; ctx.quadraticCurveTo(p.x,p.y,mx,my); }
         ctx.stroke();
-      });
+      }
 
-      const card = Array.from(studentsDiv.children).find(c => c.querySelector('h3').textContent === student.username);
-      if (card) {
-        const previewCtx = card.querySelector('canvas').getContext('2d');
-        previewCtx.clearRect(0,0,800,600);
-        previewCtx.drawImage(student.canvas,0,0);
+      function annotate(username){
+        currentStudent=username;
+        const s=students.get(username);
+        bigCtx.clearRect(0,0,800,600); bigCtx.drawImage(s.canvas,0,0);
+        overlayCtx.clearRect(0,0,800,600);
+        modalTitle.textContent=`Annotating ${username}`;
+        modal.classList.add("open");
       }
-      if (currentStudent === student.username && modal.classList.contains('open')) {
-        bigCtx.clearRect(0,0,800,600);
-        bigCtx.drawImage(student.canvas,0,0);
+      closeModal.onclick=()=>{ modal.classList.remove("open"); currentStudent=null; };
+
+      // Overlay drawing
+      overlay.addEventListener("pointerdown",(e)=>{
+        if(stylusOnly && e.pointerType!=="pen") return;
+        pointerId=e.pointerId;
+        const p=toCanvasPoint(e);
+        if(currentTool==="pen"){ activeStroke={id:Date.now()+"-"+Math.random(),color:currentColor,size:brushSize,points:[p]}; buffer=[p]; scheduleDraw(); }
+      });
+      overlay.addEventListener("pointermove",(e)=>{
+        if(e.pointerId!==pointerId||!activeStroke) return;
+        addCoalescedPoints(e,activeStroke.points); addCoalescedPoints(e,buffer); scheduleDraw();
+      });
+      overlay.addEventListener("pointerup",finalizeStroke);
+      overlay.addEventListener("pointercancel",finalizeStroke);
+      function finalizeStroke(){
+        if(!activeStroke) return;
+        flushBuffer();
+        const s=students.get(currentStudent);
+        s.teacherAnnotations.push(activeStroke);
+        channel.send({type:"broadcast",event:"teacher_stroke_end",payload:{target:currentStudent,stroke:activeStroke}});
+        activeStroke=null; buffer=[]; pointerId=null;
       }
-    }
+      function toCanvasPoint(e){ const r=overlay.getBoundingClientRect(); return {x:(e.clientX-r.left)*(800/r.width),y:(e.clientY-r.top)*(600/r.height)}; }
+      function addCoalescedPoints(e,arr){ (e.getCoalescedEvents?e.getCoalescedEvents():[e]).forEach(ce=>arr.push(toCanvasPoint(ce))); }
+      function scheduleDraw(){ if(rafId!==null) return; rafId=requestAnimationFrame(()=>{ rafId=null; flushBuffer(); }); }
+      function flushBuffer(){ if(!buffer.length||!activeStroke) return; overlayCtx.strokeStyle=activeStroke.color; overlayCtx.lineWidth=activeStroke.size; overlayCtx.beginPath(); overlayCtx.moveTo(buffer[0].x,buffer[0].y); for(let i=1;i<buffer.length;i++){ const p=buffer[i-1],c=buffer[i]; const mx=(p.x+c.x)/2,my=(p.y+c.y)/2; overlayCtx.quadraticCurveTo(p.x,p.y,mx,my); } overlayCtx.stroke(); buffer=buffer.slice(-2); }
+
+      // Toolbar controls
+      document.querySelectorAll(".color-btn").forEach(btn=>btn.onclick=()=>{ document.querySelectorAll(".color-btn").forEach(b=>b.classList.remove("active")); btn.classList.add("active"); currentColor=btn.dataset.color; });
+      document.querySelectorAll(".tool-btn").forEach(btn=>btn.onclick=()=>{ currentTool=btn.dataset.tool; document.querySelectorAll(".tool-btn").forEach(b=>b.classList.toggle("active",b===btn)); });
+      document.getElementById("brushSize").oninput=e=>{ brushSize=parseInt(e.target.value); document.getElementById("sizeDisplay").textContent=brushSize; };
+      document.getElementById("stylusToggle").onclick=()=>{ stylusOnly=!stylusOnly; };
+    });
   </script>
 </body>
 </html>
