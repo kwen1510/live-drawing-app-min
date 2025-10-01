@@ -84,6 +84,7 @@
       >
         Join Session
       </button>
+      <p id="loginError" class="hidden text-center text-sm font-semibold text-rose-600"></p>
     </div>
   </div>
 
@@ -94,7 +95,7 @@
     <div class="flex items-center justify-between rounded-2xl border border-emerald-100 bg-white/70 px-3 py-2.5">
       <div class="min-w-0">
         <h1 class="text-lg font-semibold tracking-tight text-slate-900">Student Canvas</h1>
-        <p id="connectionLabel" class="text-xs font-medium text-slate-500">Preparing session...</p>
+        <p id="connectionLabel" class="text-xs font-medium text-slate-500">Enter your details to join the session.</p>
       </div>
       <div class="flex items-center gap-2">
         <button
@@ -169,28 +170,6 @@
     window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV5dHN3c3plb3BkeG10eHhia3JiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTI5ODQsImV4cCI6MjA3NDEyODk4NH0.7skddGtrUoXluvK9JDS54bpmKCxVYeofzWATmJIgABE";
   </script>
 
-  <script type="module">
-    import initCanvasApp from './canvas-app.js';
-
-    initCanvasApp({
-      root: document.getElementById('studentCanvasApp'),
-      stage: document.getElementById('studentStage'),
-      canvas: document.getElementById('studentPad'),
-      colorButtons: [...document.querySelectorAll('#studentCanvasApp [data-color]')],
-      toolButtons: [...document.querySelectorAll('#studentCanvasApp [data-tool]')],
-      undoButton: document.getElementById('studentUndoBtn'),
-      redoButton: document.getElementById('studentRedoBtn'),
-      clearButton: document.getElementById('studentClearBtn'),
-      stylusToggle: document.getElementById('studentStylusBtn'),
-      sizeSlider: document.getElementById('studentBrush'),
-      sizeLabel: document.getElementById('studentSizeLabel'),
-      sizePreview: document.getElementById('studentSizePreview'),
-      statusElement: document.getElementById('studentCanvasStatus'),
-      statusText: document.getElementById('studentCanvasStatusText'),
-      role: 'student',
-      remoteLabel: 'teacher',
-      channelName: 'classroom-canvas',
-    });
-  </script>
+  <script type="module" src="./student-app.js"></script>
 </body>
 </html>
