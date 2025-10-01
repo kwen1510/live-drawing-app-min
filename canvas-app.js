@@ -47,6 +47,17 @@ export function initCanvasApp(options){
     stylusOnly: true,
   };
 
+  function generatePathId(){
+    if(typeof crypto === 'object' && crypto && typeof crypto.randomUUID === 'function'){
+      try{
+        return crypto.randomUUID();
+      }catch{}
+    }
+    const stamp = Date.now().toString(36);
+    const rand = Math.random().toString(36).slice(2, 10);
+    return `${role}-${stamp}-${rand}`;
+  }
+
   const state = {
     drawing: false,
     pointerId: null,
@@ -139,10 +150,16 @@ export function initCanvasApp(options){
     }
   }
 
+  const isLocalPath = (path) => {
+    const owner = path?.owner;
+    if(!owner) return true;
+    return owner === role;
+  };
+
   function updateHistoryUI(){
     if(undoButton){ undoButton.disabled = state.undoStack.length === 0; }
     if(redoButton){ redoButton.disabled = state.redoStack.length === 0; }
-    if(clearButton){ clearButton.disabled = state.paths.length === 0; }
+    if(clearButton){ clearButton.disabled = !state.paths.some(isLocalPath); }
   }
 
   function canvasPoint(e){
@@ -217,6 +234,7 @@ export function initCanvasApp(options){
   function hitStrokeIndex(pt){
     for(let i = state.paths.length - 1; i >= 0; i--){
       const path = state.paths[i];
+      if(!isLocalPath(path)) continue;
       const pts = path.points;
       if(!pts.length) continue;
       const w = path.width;
@@ -235,18 +253,62 @@ export function initCanvasApp(options){
 
   function deepClonePath(path){
     return {
+      id: path.id,
       color: path.color,
       width: path.width,
       erase: path.erase,
+      owner: path.owner,
       points: path.points.map(pt => ({ x: pt.x, y: pt.y })),
     };
   }
 
   const deepClonePaths = (arr) => arr.map(deepClonePath);
 
-  function broadcastStroke(path){
+  function findPathIndex(path, { searchFromEnd = false } = {}){
+    if(!path) return -1;
+    const list = state.paths;
+    if(searchFromEnd){
+      const refIdx = list.lastIndexOf(path);
+      if(refIdx !== -1) return refIdx;
+      if(path.id){
+        for(let i = list.length - 1; i >= 0; i--){
+          if(list[i]?.id === path.id){
+            return i;
+          }
+        }
+      }
+      return -1;
+    }
+    const refIdx = list.indexOf(path);
+    if(refIdx !== -1) return refIdx;
+    if(path.id){
+      for(let i = 0; i < list.length; i++){
+        if(list[i]?.id === path.id){
+          return i;
+        }
+      }
+    }
+    return -1;
+  }
+
+  function ensureLocalPathMetadata(path){
+    if(!path) return path;
+    if(!path.owner){
+      path.owner = role;
+    }
+    if(!path.id){
+      path.id = generatePathId();
+    }
+    return path;
+  }
+
+  function broadcastStroke(path, { statusMessage } = {}){
     if(!channel) return;
+    ensureLocalPathMetadata(path);
     const basePath = deepClonePath(path);
+    if(!basePath.owner){
+      basePath.owner = role;
+    }
     let extra = {};
     if(typeof broadcastPayloadFormatter === 'function'){
       try{
@@ -256,18 +318,48 @@ export function initCanvasApp(options){
         extra = {};
       }
     }
-    const message = { type: 'strokeComplete', from: role, path: basePath };
+    const message = { type: 'strokeComplete', from: role, owner: role, path: basePath };
     if(extra && typeof extra === 'object'){
       Object.assign(message, extra);
       if(Object.prototype.hasOwnProperty.call(extra, 'path') && extra.path){
         message.path = extra.path;
       }
     }
+    if(message.path && !message.path.owner){
+      message.path.owner = role;
+    }
     channel.postMessage(message);
-    showStatus(`Stroke sent to ${role === 'teacher' ? 'students' : 'teacher'}`, 'sent');
+    if(statusMessage !== false){
+      const display = typeof statusMessage === 'string'
+        ? statusMessage
+        : `Stroke sent to ${role === 'teacher' ? 'students' : 'teacher'}`;
+      showStatus(display, 'sent');
+    }
+  }
+
+  function broadcastStrokeRemoval(paths, { statusMessage = false } = {}){
+    if(!channel || !Array.isArray(paths) || !paths.length) return;
+    const ids = [];
+    paths.forEach((path) => {
+      if(!path) return;
+      ensureLocalPathMetadata(path);
+      if(path.id){
+        ids.push(path.id);
+      }
+    });
+    if(!ids.length) return;
+    const message = { type: 'strokeRemove', from: role, owner: role, ids };
+    channel.postMessage(message);
+    if(statusMessage){
+      const display = typeof statusMessage === 'string'
+        ? statusMessage
+        : `Removed strokes for ${role === 'teacher' ? 'students' : 'teacher'}`;
+      showStatus(display, 'sent');
+    }
   }
 
   function commitPath(path, { broadcast = true } = {}){
+    ensureLocalPathMetadata(path);
     state.paths.push(path);
     state.undoStack.push({ type: 'draw', path });
     state.redoStack.length = 0;
@@ -283,9 +375,23 @@ export function initCanvasApp(options){
 
   function applyRemotePath(path, message){
     const pathCopy = deepClonePath(path);
-    state.paths.push(pathCopy);
-    state.undoStack.push({ type: 'draw', path: pathCopy });
-    state.redoStack.length = 0;
+    const remoteOwner = pathCopy.owner || message?.owner || message?.from;
+    pathCopy.owner = remoteOwner && typeof remoteOwner === 'string'
+      ? remoteOwner
+      : (role === 'teacher' ? 'student' : 'teacher');
+    if(!pathCopy.id && path.id){
+      pathCopy.id = path.id;
+    }
+    if(pathCopy.id){
+      const existingIndex = state.paths.findIndex((p) => p.id === pathCopy.id);
+      if(existingIndex !== -1){
+        state.paths.splice(existingIndex, 1, pathCopy);
+      }else{
+        state.paths.push(pathCopy);
+      }
+    }else{
+      state.paths.push(pathCopy);
+    }
     renderAll();
     updateHistoryUI();
     showStatus(`Stroke received from ${options.remoteLabel ?? 'peer'}`, 'received');
@@ -294,9 +400,33 @@ export function initCanvasApp(options){
     }
   }
 
+  function removePathsByIds(ids, owner){
+    if(!Array.isArray(ids) || !ids.length) return false;
+    const idSet = new Set(ids);
+    let changed = false;
+    for(let i = state.paths.length - 1; i >= 0; i--){
+      const path = state.paths[i];
+      if(!path || !path.id) continue;
+      if(owner && path.owner && path.owner !== owner) continue;
+      if(idSet.has(path.id)){
+        state.paths.splice(i, 1);
+        changed = true;
+      }
+    }
+    if(changed){
+      renderAll();
+      updateHistoryUI();
+    }
+    return changed;
+  }
+
   function eraseAt(pt){
     const idx = hitStrokeIndex(pt);
     if(idx !== -1){
+      const target = state.paths[idx];
+      if(!isLocalPath(target)){
+        return;
+      }
       const [removed] = state.paths.splice(idx, 1);
       state.eraseBatch.push({ path: removed, index: idx });
       renderAll();
@@ -306,9 +436,13 @@ export function initCanvasApp(options){
   function finishErase(){
     const batch = state.eraseBatch || [];
     if(batch.length){
-      state.undoStack.push({ type: 'erase', entries: batch });
-      state.redoStack.length = 0;
-      updateHistoryUI();
+      const localEntries = batch.filter(entry => isLocalPath(entry.path));
+      if(localEntries.length){
+        state.undoStack.push({ type: 'erase', entries: localEntries });
+        state.redoStack.length = 0;
+        updateHistoryUI();
+        broadcastStrokeRemoval(localEntries.map(entry => entry.path));
+      }
     }
     state.eraseBatch = null;
   }
@@ -329,7 +463,13 @@ export function initCanvasApp(options){
       return;
     }
 
-    const path = { color: tool.color, width: baseWidth(), erase: false, points: [pt] };
+    const path = ensureLocalPathMetadata({
+      color: tool.color,
+      width: baseWidth(),
+      erase: false,
+      owner: role,
+      points: [pt],
+    });
     state.currentPath = path;
     strokeLiveBegin(pt, path.width, path.color, false);
 
@@ -406,21 +546,62 @@ export function initCanvasApp(options){
 
       if(action.type === 'draw'){
         const path = action.path;
-        const i = state.paths.lastIndexOf(path);
-        if(i !== -1) state.paths.splice(i, 1);
-        else state.paths.pop();
-        state.redoStack.push({ type: 'draw', path });
+        if(!isLocalPath(path)){
+          renderAll();
+          updateHistoryUI();
+          return;
+        }
+        const idx = findPathIndex(path, { searchFromEnd: true });
+        if(idx === -1){
+          renderAll();
+          updateHistoryUI();
+          return;
+        }
+        const [removed] = state.paths.splice(idx, 1);
+        state.redoStack.push({ type: 'draw', path: removed });
+        broadcastStrokeRemoval([removed]);
       }else if(action.type === 'erase'){
-        const entries = action.entries || [];
+        const entries = (action.entries || []).filter(entry => isLocalPath(entry.path));
         for(let i = entries.length - 1; i >= 0; i--){
           const { path, index } = entries[i];
+          ensureLocalPathMetadata(path);
           state.paths.splice(index, 0, path);
         }
-        state.redoStack.push({ type: 'erase', entries });
+        if(entries.length){
+          state.redoStack.push({ type: 'erase', entries });
+          entries.forEach(entry => broadcastStroke(entry.path, { statusMessage: false }));
+        }
       }else if(action.type === 'clear'){
-        const prev = action.prev || [];
-        state.paths = deepClonePaths(prev);
-        state.redoStack.push({ type: 'clear', prev: deepClonePaths(prev) });
+        const entries = (action.entries || []).map(entry => ({
+          path: deepClonePath(entry.path),
+          index: entry.index,
+        })).filter(entry => isLocalPath(entry.path));
+        if(entries.length){
+          const sorted = [...entries].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+          const inserted = [];
+          const broadcastList = [];
+          sorted.forEach(({ path, index }) => {
+            ensureLocalPathMetadata(path);
+            const insertAt = Math.min(typeof index === 'number' ? index : state.paths.length, state.paths.length);
+            state.paths.splice(insertAt, 0, path);
+            inserted.push({ path: deepClonePath(path), index: insertAt });
+            broadcastList.push(path);
+          });
+          if(inserted.length){
+            state.redoStack.push({ type: 'clear', entries: inserted, prev: inserted.map(entry => entry.path) });
+            broadcastList.forEach(p => broadcastStroke(p, { statusMessage: false }));
+          }
+        }else{
+          const prev = (action.prev || []).map(deepClonePath).filter(isLocalPath);
+          if(prev.length){
+            prev.forEach(path => {
+              ensureLocalPathMetadata(path);
+              state.paths.push(path);
+              broadcastStroke(path, { statusMessage: false });
+            });
+            state.redoStack.push({ type: 'clear', prev: deepClonePaths(prev) });
+          }
+        }
       }
 
       renderAll();
@@ -434,25 +615,54 @@ export function initCanvasApp(options){
       const action = state.redoStack.pop();
 
       if(action.type === 'draw'){
-        state.paths.push(action.path);
-        state.undoStack.push({ type: 'draw', path: action.path });
+        if(isLocalPath(action.path)){
+          ensureLocalPathMetadata(action.path);
+          state.paths.push(action.path);
+          state.undoStack.push({ type: 'draw', path: action.path });
+          broadcastStroke(action.path, { statusMessage: false });
+        }
       }else if(action.type === 'erase'){
         const performed = [];
         (action.entries || []).forEach(({ path, index }) => {
-          const i = state.paths.indexOf(path);
+          if(!isLocalPath(path)) return;
+          const i = findPathIndex(path, { searchFromEnd: true });
           if(i !== -1){
             const [removed] = state.paths.splice(i, 1);
             performed.push({ path: removed, index: i });
-          }else if(index >= 0 && index < state.paths.length){
-            const [removed] = state.paths.splice(index, 1);
-            performed.push({ path: removed, index });
+            return;
+          }
+          if(typeof index === 'number' && index >= 0 && index < state.paths.length){
+            const candidate = state.paths[index];
+            if(candidate && isLocalPath(candidate) && (!path.id || candidate.id === path.id)){
+              const [removed] = state.paths.splice(index, 1);
+              performed.push({ path: removed, index });
+            }
           }
         });
-        if(performed.length) state.undoStack.push({ type: 'erase', entries: performed });
+        if(performed.length){
+          state.undoStack.push({ type: 'erase', entries: performed });
+          broadcastStrokeRemoval(performed.map(entry => entry.path));
+        }
       }else if(action.type === 'clear'){
-        const prevNow = deepClonePaths(state.paths);
-        state.paths.length = 0;
-        state.undoStack.push({ type: 'clear', prev: prevNow });
+        const removed = [];
+        for(let i = state.paths.length - 1; i >= 0; i--){
+          const path = state.paths[i];
+          if(!isLocalPath(path)) continue;
+          const [spliced] = state.paths.splice(i, 1);
+          removed.push({ path: spliced, index: i });
+        }
+        if(removed.length){
+          const entryClones = removed.map(({ path, index }) => ({
+            path: deepClonePath(path),
+            index,
+          }));
+          state.undoStack.push({
+            type: 'clear',
+            prev: entryClones.map(entry => entry.path),
+            entries: entryClones,
+          });
+          broadcastStrokeRemoval(removed.map(entry => entry.path));
+        }
       }
 
       renderAll();
@@ -462,13 +672,19 @@ export function initCanvasApp(options){
 
   if(clearButton){
     clearButton.addEventListener('click', () => {
-      const snapshot = deepClonePaths(state.paths);
-      if(snapshot.length === 0) return;
-      state.paths.length = 0;
-      state.undoStack.push({ type: 'clear', prev: snapshot });
+      const removed = [];
+      for(let i = state.paths.length - 1; i >= 0; i--){
+        const path = state.paths[i];
+        if(!isLocalPath(path)) continue;
+        const [deleted] = state.paths.splice(i, 1);
+        removed.push({ path: deleted, index: i });
+      }
+      if(!removed.length) return;
+      state.undoStack.push({ type: 'erase', entries: removed });
       state.redoStack.length = 0;
       renderAll();
       updateHistoryUI();
+      broadcastStrokeRemoval(removed.map(entry => entry.path));
     });
   }
 
@@ -524,6 +740,9 @@ export function initCanvasApp(options){
         return;
       }
       applyRemotePath(msg.path, msg);
+    }else if(msg.type === 'strokeRemove' && Array.isArray(msg.ids)){
+      const owner = msg.owner || msg.from || null;
+      removePathsByIds(msg.ids, owner);
     }
   }
 
