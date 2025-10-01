@@ -4,13 +4,25 @@
   <meta charset="UTF-8" />
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
   />
   <title>Student - Minimal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
       color-scheme: light;
+    }
+    html,
+    body {
+      height: 100%;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+    body {
+      position: fixed;
+      inset: 0;
+      height: 100dvh;
+      width: 100%;
     }
     .color-btn {
       transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -53,10 +65,10 @@
     }
   </style>
 </head>
-  <body class="min-h-screen bg-gradient-to-br from-emerald-100 via-white to-slate-100 flex items-center justify-center p-6">
+  <body class="bg-gradient-to-br from-emerald-100 via-white to-slate-100 flex items-center justify-center p-4">
   <div
     id="loginForm"
-    class="w-full max-w-md rounded-3xl bg-white/95 p-10 shadow-[0_30px_70px_rgba(14,116,144,0.35)] backdrop-blur-lg"
+    class="w-full max-w-md rounded-3xl bg-white/95 p-10 shadow-[0_30px_70px_rgba(14,116,144,0.35)] backdrop-blur-lg max-h-[calc(100dvh-2rem)] overflow-y-auto"
   >
     <h1 class="text-center text-3xl font-bold text-slate-900">Student Login</h1>
     <p class="mt-2 text-center text-slate-500">Join your classroom session to start drawing.</p>
@@ -96,46 +108,61 @@
 
   <div
     id="appContainer"
-    class="hidden flex h-[min(820px,calc(100vh-2rem))] w-full max-w-[1120px] flex-col gap-4 rounded-[24px] border border-emerald-100/60 bg-white/85 p-4 text-slate-700 shadow-[0_35px_80px_rgba(15,118,110,0.18)] backdrop-blur"
+    class="hidden flex h-[calc(100dvh-2.5rem)] w-full max-w-[1120px] flex-col gap-3 rounded-[24px] border border-emerald-100/60 bg-white/85 p-3 text-slate-700 shadow-[0_35px_80px_rgba(15,118,110,0.18)] backdrop-blur"
   >
-    <div class="flex items-center justify-between rounded-2xl border border-emerald-100 bg-white/70 px-4 py-3">
+    <div class="flex items-center justify-between rounded-2xl border border-emerald-100 bg-white/70 px-3 py-2.5">
       <div class="min-w-0">
         <h1 class="text-lg font-semibold tracking-tight text-slate-900">Student Canvas</h1>
         <p id="connectionLabel" class="text-xs font-medium text-slate-500">Preparing session...</p>
       </div>
-      <button
-        id="status"
-        type="button"
-        class="status-dot"
-        aria-live="polite"
-        aria-label="Connecting..."
-        title="Connecting..."
-      >
-        <span id="statusText" class="sr-only">Connecting...</span>
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          id="status"
+          type="button"
+          class="status-dot"
+          aria-live="polite"
+          aria-label="Connecting..."
+          title="Connecting..."
+        >
+          <span id="statusText" class="sr-only">Connecting...</span>
+        </button>
+        <button
+          id="stylusToggle"
+          class="stylus-indicator inline-flex items-center rounded-lg bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-200"
+        >
+          Stylus mode (pen only)
+        </button>
+        <button
+          id="swapToolbarBtn"
+          type="button"
+          class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+        >
+          Move toolbar to right
+        </button>
+      </div>
     </div>
 
-    <div id="workspace" class="flex flex-1 min-h-0 items-stretch gap-4 overflow-hidden">
+    <div id="workspace" class="flex flex-1 min-h-0 items-stretch gap-3 overflow-hidden">
       <div
         id="toolbarWrapper"
-        class="flex min-h-0 w-[170px] flex-col rounded-3xl border border-slate-200 bg-white/95 p-4 text-slate-700 shadow-[0_22px_55px_rgba(15,23,42,0.16)]"
+        class="flex min-h-0 w-[158px] flex-col rounded-3xl border border-slate-200 bg-white/95 p-3 text-slate-700 shadow-[0_22px_55px_rgba(15,23,42,0.16)]"
       >
         <div class="flex-1 space-y-4 overflow-y-auto pr-1">
           <div class="flex flex-col items-center gap-3">
             <span class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Colors</span>
-            <div id="colorPalette" class="flex flex-col items-center gap-3"></div>
+            <div id="colorPalette" class="flex flex-col items-center gap-2.5"></div>
           </div>
           <div class="space-y-3">
             <span class="block text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Tools</span>
             <div class="flex flex-col gap-2">
               <button
-                class="tool-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                class="tool-btn rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
                 data-tool="pen"
               >
                 Pen
               </button>
               <button
-                class="tool-btn rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                class="tool-btn rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
                 data-tool="eraser"
               >
                 Eraser
@@ -144,7 +171,7 @@
           </div>
           <div class="space-y-3">
             <span class="block text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400">Brush Size</span>
-            <div class="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-3 py-2 shadow-inner">
+            <div class="flex items-center justify-between gap-2 rounded-2xl bg-slate-50 px-2.5 py-2 shadow-inner">
               <input
                 type="range"
                 id="brushSize"
@@ -153,7 +180,7 @@
                 value="3"
                 class="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-500"
               />
-              <span id="sizeDisplay" class="text-sm font-bold text-slate-800">3</span>
+              <span id="sizeDisplay" class="text-xs font-bold text-slate-800">3</span>
             </div>
           </div>
           <div class="space-y-3">
@@ -161,45 +188,32 @@
             <div class="flex flex-col gap-2">
               <button
                 id="undoBtn"
-                class="action-btn rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                class="action-btn rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
                 disabled
               >
                 Undo
               </button>
               <button
                 id="redoBtn"
-                class="action-btn rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                class="action-btn rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
                 disabled
               >
                 Redo
               </button>
               <button
                 id="clearBtn"
-                class="action-btn rounded-xl bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-600 shadow-sm transition hover:bg-rose-200"
+                class="action-btn rounded-lg bg-rose-100 px-2.5 py-1 text-[11px] font-semibold text-rose-600 shadow-sm transition hover:bg-rose-200"
               >
                 Clear
               </button>
             </div>
           </div>
-          <button
-            id="stylusToggle"
-            class="stylus-indicator w-full rounded-xl bg-blue-100 px-3 py-1.5 text-center text-xs font-semibold text-blue-700 transition hover:bg-blue-200"
-          >
-            Stylus mode (pen only)
-          </button>
         </div>
-        <button
-          id="swapToolbarBtn"
-          type="button"
-          class="mt-3 inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:text-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200"
-        >
-          Move toolbar to right
-        </button>
       </div>
       <div class="flex min-h-0 flex-1 items-center justify-center rounded-[24px] border border-emerald-100 bg-white/65 p-3 shadow-inner">
         <div
           id="stage"
-          class="flex h-[600px] w-full max-w-[840px] flex-1 items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_20px_55px_rgba(15,23,42,0.12)]"
+          class="flex h-full max-h-[640px] w-full max-w-[840px] flex-1 items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_20px_55px_rgba(15,23,42,0.12)]"
         >
           <canvas
             id="canvas"
@@ -244,6 +258,9 @@
     const workspace = document.getElementById('workspace');
     const stage = document.getElementById('stage');
 
+    const CANVAS_WIDTH = 800;
+    const CANVAS_HEIGHT = 600;
+
     const COLOR_PRESETS = [
       { label: 'Black', value: '#111827' },
       { label: 'Blue', value: '#2563eb' },
@@ -255,20 +272,16 @@
     /* ----------------- Canvas / DPR ----------------- */
     const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
     let dpr = 1;
-    const usePointerRawUpdate = 'onpointerrawupdate' in window;
 
     function resizeCanvasForDPR() {
-      const rect = canvas.getBoundingClientRect();
       dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
+      canvas.width = Math.round(CANVAS_WIDTH * dpr);
+      canvas.height = Math.round(CANVAS_HEIGHT * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       redrawCanvas();
     }
-    const ro = new ResizeObserver(resizeCanvasForDPR);
-    ro.observe(canvas);
 
     function fitCanvasToStage() {
       if (!stage) return;
@@ -277,9 +290,9 @@
       const padY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
       const availW = Math.max(0, stage.clientWidth - padX);
       const availH = Math.max(0, stage.clientHeight - padY);
-      const scale = Math.min(availW / 800, availH / 600, 1);
-      canvas.style.width = `${800 * scale}px`;
-      canvas.style.height = `${600 * scale}px`;
+      const scale = Math.min(availW / CANVAS_WIDTH, availH / CANVAS_HEIGHT, 1);
+      canvas.style.width = `${CANVAS_WIDTH * scale}px`;
+      canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
     }
 
     const stageObserver = new ResizeObserver(fitCanvasToStage);
@@ -309,8 +322,7 @@
     // draw session
     let activePointerId = null;
     let activeStroke = null;  // {id,color,size,points:[]}
-    let strokeBuffer = [];    // buffered display points for RAF
-    let rafId = null;
+    let liveStrokeActive = false;
 
     // eraser
     let isErasing = false;
@@ -345,7 +357,7 @@
       COLOR_PRESETS.forEach(preset => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'color-btn flex h-10 w-10 items-center justify-center rounded-full border-2 border-transparent shadow-sm';
+        btn.className = 'color-btn flex h-9 w-9 items-center justify-center rounded-full border-2 border-transparent shadow-sm';
         btn.dataset.color = preset.value;
         btn.title = preset.label;
         btn.setAttribute('aria-label', preset.label);
@@ -595,7 +607,15 @@
     }
 
     function appendSamples(array, samples) {
-      samples.forEach(sample => appendPointWithInterpolation(array, { x: sample.x, y: sample.y }));
+      const added = [];
+      samples.forEach(sample => {
+        const before = array.length;
+        appendPointWithInterpolation(array, { x: sample.x, y: sample.y });
+        if (array.length > before) {
+          for (let i = before; i < array.length; i++) added.push(array[i]);
+        }
+      });
+      return added;
     }
 
     function getCoalescedSamples(e) {
@@ -605,7 +625,7 @@
 
     function redrawCanvas() {
       ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
       const deleted = new Set();
       for (let i = 0; i <= historyStep; i++) {
@@ -628,25 +648,14 @@
       drawSmoothStrokePath(ctx, stroke.points, stroke.color, stroke.size);
     }
 
-    // RAF draw of incremental buffered segment
-    function scheduleDraw() {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        flushBufferedSegment();
-      });
-    }
-
-    function flushBufferedSegment() {
-      if (!activeStroke || strokeBuffer.length === 0) return;
-      ctx.globalCompositeOperation = 'source-over';
-      drawSmoothStrokePath(ctx, strokeBuffer, activeStroke.color, activeStroke.size);
-      strokeBuffer = strokeBuffer.slice(-5);
-    }
-
     function getCanvasPoint(ev) {
       const rect = canvas.getBoundingClientRect();
-      return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+      const scaleX = CANVAS_WIDTH / rect.width || 1;
+      const scaleY = CANVAS_HEIGHT / rect.height || 1;
+      return {
+        x: (ev.clientX - rect.left) * scaleX,
+        y: (ev.clientY - rect.top) * scaleY
+      };
     }
 
     function distToSegmentSquared(px, py, x1, y1, x2, y2) {
@@ -700,7 +709,7 @@
 
       e.preventDefault();
       activePointerId = e.pointerId;
-      canvas.setPointerCapture(activePointerId);
+      try { canvas.setPointerCapture(activePointerId); } catch {}
 
       const p = getCanvasPoint(e);
 
@@ -716,13 +725,19 @@
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         color: currentColor,
         size: brushSize,
-        points: []
+        points: [p]
       };
 
-      // seed
-      activeStroke.points.push(p);
-      strokeBuffer = [p];
-      scheduleDraw();
+      liveStrokeActive = true;
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = activeStroke.color;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = activeStroke.size;
+      drawDotPath(ctx, p, activeStroke.size, activeStroke.color);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
 
       channel?.send({ type:'broadcast', event:'student_stroke_start', payload:{ username, stroke:{ id: activeStroke.id, color: activeStroke.color, size: activeStroke.size } }});
     });
@@ -759,25 +774,21 @@
       const samples = getCoalescedSamples(e);
       if (!samples.length) return;
 
-      const before = activeStroke.points.length;
-      appendSamples(activeStroke.points, samples);
-      appendSamples(strokeBuffer, samples);
+      const added = appendSamples(activeStroke.points, samples);
+      if (!added.length) return;
 
-      if (activeStroke.points.length !== before) {
-        const last = activeStroke.points[activeStroke.points.length - 1];
+      added.forEach(pt => {
+        ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.stroke();
+
+      const last = activeStroke.points[activeStroke.points.length - 1];
+      if (last) {
         channel?.send({ type:'broadcast', event:'student_stroke_point', payload:{ username, strokeId: activeStroke.id, x: last.x, y: last.y }});
       }
-      scheduleDraw();
     }
 
-    canvas.addEventListener('pointermove', (e) => {
-      if (usePointerRawUpdate) return;
-      handlePointerMove(e);
-    });
-
-    if (usePointerRawUpdate) {
-      canvas.addEventListener('pointerrawupdate', handlePointerMove);
-    }
+    canvas.addEventListener('pointermove', handlePointerMove, { passive: false });
 
     function finalizePointer(e) {
       if (activePointerId !== e.pointerId) return;
@@ -802,11 +813,13 @@
       if (!activeStroke) {
         try { canvas.releasePointerCapture(activePointerId); } catch {}
         activePointerId = null;
+        if (liveStrokeActive) {
+          ctx.restore();
+          liveStrokeActive = false;
+          redrawCanvas();
+        }
         return;
       }
-
-      if (rafId) cancelAnimationFrame(rafId);
-      flushBufferedSegment();
 
       const finalized = {
         id: activeStroke.id,
@@ -815,8 +828,12 @@
         points: activeStroke.points.map(p => ({ x:p.x, y:p.y }))
       };
 
+      if (liveStrokeActive) {
+        ctx.restore();
+        liveStrokeActive = false;
+      }
+
       activeStroke = null;
-      strokeBuffer = [];
       try { canvas.releasePointerCapture(activePointerId); } catch {}
       activePointerId = null;
 
