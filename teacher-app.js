@@ -1,4 +1,5 @@
 import initCanvasApp from './canvas-app.js';
+import { createMessageChannel } from './realtime-channel.js';
 
 const sessionInput = document.getElementById('sessionInput');
 const startSessionBtn = document.getElementById('startSessionBtn');
@@ -14,7 +15,7 @@ const modalTitle = document.getElementById('modalTitle');
 const teacherClearBtnEl = document.getElementById('teacherClearBtn');
 
 const STORAGE_KEY = 'liveDrawing.teacherSession';
-const presenceChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('classroom-presence') : null;
+const presenceChannel = createMessageChannel('classroom-presence');
 
 const teacherCanvasApp = initCanvasApp({
   root: document.getElementById('teacherCanvasApp'),
@@ -447,6 +448,9 @@ window.addEventListener('keydown', (event) => {
 window.addEventListener('beforeunload', () => {
   if(teacherCanvasApp?.destroy){
     teacherCanvasApp.destroy();
+  }
+  if(presenceChannel?.close){
+    presenceChannel.close();
   }
 });
 

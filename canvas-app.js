@@ -1,3 +1,5 @@
+import { createMessageChannel } from './realtime-channel.js';
+
 const DEFAULTS = {
   width: 800,
   height: 600,
@@ -68,8 +70,7 @@ export function initCanvasApp(options){
     eraseBatch: null,
   };
 
-  const supportsBroadcast = typeof BroadcastChannel === 'function';
-  const channel = supportsBroadcast ? new BroadcastChannel(channelName) : null;
+  const channel = createMessageChannel(channelName);
   let statusTimeout = null;
 
   const statusEl = statusElement ?? statusText ?? null;
