@@ -251,7 +251,7 @@
       });
 
       /* ---------- App state ---------- */
-      let supabase, channel;
+      let channel;
       let username, sessionCode;
       let stylusOnly = true;
       let currentColor = "#000000";
@@ -793,7 +793,7 @@
       resizeCanvasForDPR();
 
       /* ---------- Supabase minimal channel + teacher events ---------- */
-      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const sbClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       let channel = null;
 
       function wireTeacherEvents(ch) {
@@ -853,7 +853,7 @@
         updateStatus("connecting", "Connecting…");
 
         try {
-          channel = supabase.channel(`minimal-${sessionCode}`, { config: { broadcast: { ack: false } } });
+          channel = sbClient.channel(`minimal-${sessionCode}`, { config: { broadcast: { ack: false } } });
           wireTeacherEvents(channel);
 
           channel.subscribe(async (st) => {
