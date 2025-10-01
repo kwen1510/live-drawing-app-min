@@ -199,20 +199,9 @@
             class="flex-1 space-y-6 rounded-3xl border border-slate-200 bg-white p-6"
           >
             <div class="flex flex-col gap-4">
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-base font-semibold tracking-tight text-slate-900">
-                  Session controls
-                </h2>
-                <button
-                  id="voiceToggle"
-                  type="button"
-                  class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20"
-                  aria-pressed="true"
-                >
-                  <span id="voiceIcon" aria-hidden="true">🔊</span>
-                  <span id="voiceLabel">Voice feedback on</span>
-                </button>
-              </div>
+              <h2 class="text-base font-semibold tracking-tight text-slate-900">
+                Session controls
+              </h2>
               <dl class="grid gap-4 sm:grid-cols-2">
                 <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                   <dt class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -237,10 +226,6 @@
                   </dd>
                 </div>
               </dl>
-              <p class="text-xs text-slate-500">
-                When voice feedback is on, key events such as connections,
-                joins, and annotation updates are spoken aloud.
-              </p>
             </div>
           </div>
         </div>
@@ -471,9 +456,6 @@
       const feedbackToast = document.getElementById("feedbackToast");
       const activityLabel = document.getElementById("activityLabel");
       const statusLabel = document.getElementById("statusLabel");
-      const voiceToggle = document.getElementById("voiceToggle");
-      const voiceIcon = document.getElementById("voiceIcon");
-      const voiceLabel = document.getElementById("voiceLabel");
 
       const statusStyles = {
         idle: "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold tracking-tight text-slate-600 ring-1 ring-slate-200 bg-slate-100",
@@ -498,63 +480,11 @@
       let annotationHistory = [];
       let annotationHistoryStep = -1;
 
-      const speechSupported =
-        "speechSynthesis" in window &&
-        typeof SpeechSynthesisUtterance !== "undefined";
-      let voiceEnabled = speechSupported;
-
       function logActivity(message) {
         if (activityLabel && message) {
           activityLabel.textContent = message;
         }
       }
-
-      function speakMessage(message) {
-        if (!voiceEnabled || !speechSupported || !message) return;
-        const utterance = new SpeechSynthesisUtterance(message);
-        utterance.rate = 1;
-        utterance.pitch = 1;
-        try {
-          window.speechSynthesis.cancel();
-        } catch (err) {
-          console.warn("Unable to cancel previous speech output", err);
-        }
-        window.speechSynthesis.speak(utterance);
-      }
-
-      function updateVoiceToggle() {
-        if (!voiceToggle) return;
-        voiceToggle.setAttribute("aria-pressed", String(voiceEnabled));
-        if (voiceIcon) {
-          voiceIcon.textContent = voiceEnabled ? "🔊" : "🔇";
-        }
-        if (voiceLabel) {
-          voiceLabel.textContent = voiceEnabled
-            ? "Voice feedback on"
-            : "Voice feedback off";
-        }
-        if (!speechSupported) {
-          voiceToggle.disabled = true;
-          voiceToggle.classList.add("cursor-not-allowed", "opacity-60");
-          if (voiceLabel) {
-            voiceLabel.textContent = "Voice feedback unavailable";
-          }
-          if (voiceIcon) {
-            voiceIcon.textContent = "🔇";
-          }
-        }
-      }
-
-      updateVoiceToggle();
-
-      voiceToggle?.addEventListener("click", () => {
-        if (!speechSupported) return;
-        voiceEnabled = !voiceEnabled;
-        updateVoiceToggle();
-        showFeedback(
-          voiceEnabled ? "Voice feedback enabled" : "Voice feedback muted",
-        );
-      });
 
       function resetStudentsUI() {
         students.clear();
@@ -658,7 +588,6 @@
             feedbackToast.classList.remove("show");
           }, 1600);
         }
-        speakMessage(message);
       }
 
       function cloneAnnotations(annotations = []) {
@@ -792,7 +721,6 @@
         startSessionBtn.disabled = true;
         updateStatus("connecting", "Connecting…");
         logActivity("Connecting to session…");
-        speakMessage("Connecting to session");
         await setupSupabase();
       }
 
@@ -905,19 +833,9 @@
             }
           });
 
-          let handledDuringSubscribe = false;
-          const subscribeStatus = await channel.subscribe((channelStatus) => {
+          await channel.subscribe((channelStatus) => {
             handleChannelStatus(channelStatus);
-            if (channelStatus !== "SUBSCRIBED") {
-              handledDuringSubscribe = true;
-            }
           });
-
-          if (subscribeStatus !== "SUBSCRIBED" && !handledDuringSubscribe) {
-            handleConnectionError(
-              "Unable to connect to Supabase. Tap “Start session” to retry.",
-            );
-          }
         } catch (err) {
           console.error("Failed to initialise Supabase channel", err);
           handleConnectionError(
