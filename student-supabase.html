@@ -91,16 +91,16 @@
       }
     </style>
   </head>
-  <body class="min-h-screen bg-slate-950 text-slate-100">
+  <body class="min-h-screen bg-slate-50 text-slate-900">
     <div class="absolute inset-0 -z-10 overflow-hidden">
       <div
-        class="absolute -top-48 -right-32 h-[32rem] w-[32rem] rounded-full bg-gradient-to-br from-leaf-600/50 to-emerald-400/40 blur-3xl"
+        class="absolute -top-48 -right-32 h-[32rem] w-[32rem] rounded-full bg-gradient-to-br from-leaf-100 to-emerald-100 blur-3xl"
       ></div>
       <div
-        class="absolute -bottom-52 -left-24 h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-emerald-500/40 to-teal-400/30 blur-3xl"
+        class="absolute -bottom-52 -left-24 h-[36rem] w-[36rem] rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 blur-3xl"
       ></div>
       <div
-        class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_60%)]"
+        class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.08),_transparent_60%)]"
       ></div>
     </div>
 
@@ -109,18 +109,18 @@
     >
       <section
         id="loginForm"
-        class="w-full max-w-xl space-y-6 rounded-3xl border border-white/10 bg-white/10 p-8 shadow-2xl shadow-emerald-700/20 backdrop-blur"
+        class="w-full max-w-xl space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl shadow-emerald-200"
       >
         <div class="flex items-center gap-3">
           <span
-            class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-2xl"
+            class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-2xl"
             >🖊️</span
           >
           <div>
-            <h1 class="text-3xl font-semibold text-white">
+            <h1 class="text-3xl font-semibold text-slate-900">
               Join your class canvas
             </h1>
-            <p class="text-sm text-slate-300">
+            <p class="text-sm text-slate-600">
               Enter your name and the code shared by your teacher.
             </p>
           </div>
@@ -129,7 +129,7 @@
           <div class="space-y-2">
             <label
               for="usernameInput"
-              class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+              class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500"
               >Your name</label
             >
             <input
@@ -137,14 +137,14 @@
               id="usernameInput"
               maxlength="30"
               required
-              class="w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-base font-semibold text-slate-900 shadow focus:border-leaf-500 focus:outline-none focus:ring-4 focus:ring-leaf-500/30"
+              class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold text-slate-900 shadow focus:border-leaf-500 focus:outline-none focus:ring-4 focus:ring-leaf-500/30"
               placeholder="Alex Rivera"
             />
           </div>
           <div class="space-y-2">
             <label
               for="sessionInput"
-              class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+              class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500"
               >Session code</label
             >
             <input
@@ -153,14 +153,14 @@
               maxlength="10"
               value="TEST123"
               required
-              class="w-full rounded-xl border border-white/20 bg-white/90 px-4 py-3 text-base font-semibold uppercase tracking-[0.3em] text-slate-900 shadow focus:border-leaf-500 focus:outline-none focus:ring-4 focus:ring-leaf-500/30"
+              class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base font-semibold uppercase tracking-[0.3em] text-slate-900 shadow focus:border-leaf-500 focus:outline-none focus:ring-4 focus:ring-leaf-500/30"
               placeholder="ABC123"
             />
           </div>
         </div>
         <button
           id="loginBtn"
-          class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-leaf-600 to-emerald-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-emerald-700/30 transition hover:translate-y-[-1px] hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/40"
+          class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-leaf-600 to-emerald-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-emerald-400/40 transition hover:translate-y-[-1px] hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/40"
         >
           Join session
         </button>
@@ -168,37 +168,37 @@
 
       <section id="appContainer" class="hidden w-full max-w-5xl space-y-6">
         <header
-          class="flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 text-center shadow-xl shadow-emerald-700/20 backdrop-blur"
+          class="flex flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-xl shadow-emerald-200"
         >
-          <h1 class="text-3xl font-semibold text-white">Your live canvas</h1>
-          <p class="text-sm text-slate-300">
+          <h1 class="text-3xl font-semibold text-slate-900">Your live canvas</h1>
+          <p class="text-sm text-slate-600">
             Use undo
             <kbd
-              class="rounded bg-white/20 px-2 py-1 text-[0.7rem] font-semibold uppercase"
+              class="rounded bg-slate-200 px-2 py-1 text-[0.7rem] font-semibold uppercase text-slate-800"
               >⌘</kbd
             >
             +
             <kbd
-              class="rounded bg-white/20 px-2 py-1 text-[0.7rem] font-semibold uppercase"
+              class="rounded bg-slate-200 px-2 py-1 text-[0.7rem] font-semibold uppercase text-slate-800"
               >Z</kbd
             >, redo with ⇧, and switch between pen or eraser anytime.
           </p>
           <span
             id="status"
-            class="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-white/90 ring-1 ring-white/30"
+            class="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-slate-600 ring-1 ring-slate-200"
             aria-live="polite"
             >Connecting…</span
           >
         </header>
 
         <div
-          class="rounded-[2.5rem] border border-white/10 bg-white/10 p-1 shadow-2xl shadow-emerald-700/20 backdrop-blur"
+          class="rounded-[2.5rem] border border-slate-200 bg-white p-1 shadow-2xl shadow-emerald-200"
         >
           <div
-            class="flex flex-col gap-6 rounded-[2.3rem] border border-white/10 bg-white/80 p-6"
+            class="flex flex-col gap-6 rounded-[2.3rem] border border-slate-200 bg-white p-6"
           >
             <div
-              class="toolbar flex flex-wrap items-center justify-center gap-3 rounded-full border border-white/40 bg-white px-6 py-3 shadow-lg shadow-slate-900/10"
+              class="toolbar flex flex-wrap items-center justify-center gap-3 rounded-full border border-slate-200 bg-slate-50 px-6 py-3 shadow-lg shadow-slate-200"
             >
               <div
                 class="flex items-center gap-2"
@@ -231,13 +231,13 @@
                 aria-label="Tool"
               >
                 <button
-                  class="tool-btn rounded-full border border-slate-200/80 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+                  class="tool-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
                   data-tool="pen"
                 >
                   Pen
                 </button>
                 <button
-                  class="tool-btn rounded-full border border-slate-200/80 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+                  class="tool-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
                   data-tool="eraser"
                 >
                   Eraser
@@ -266,7 +266,7 @@
               <span class="hidden h-8 w-px bg-slate-200 lg:block"></span>
               <div class="flex items-center gap-2" aria-label="Canvas actions">
                 <button
-                  class="action-btn rounded-full border border-slate-200/80 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
+                  class="action-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
                   id="undoBtn"
                   title="Undo (⌘/Ctrl + Z)"
                   disabled
@@ -274,7 +274,7 @@
                   Undo
                 </button>
                 <button
-                  class="action-btn rounded-full border border-slate-200/80 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
+                  class="action-btn rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 disabled:opacity-40"
                   id="redoBtn"
                   title="Redo (⇧ + ⌘/Ctrl + Z)"
                   disabled
@@ -291,7 +291,7 @@
               </div>
               <span class="hidden h-8 w-px bg-slate-200 lg:block"></span>
               <button
-                class="stylus-indicator rounded-full border border-slate-200/80 bg-emerald-100/80 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-800"
+                class="stylus-indicator rounded-full border border-slate-200 bg-emerald-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-800"
                 id="stylusToggle"
               >
                 Stylus mode (pen only)
@@ -299,7 +299,7 @@
             </div>
 
             <div
-              class="overflow-hidden rounded-3xl border border-white/30 bg-white shadow-inner shadow-slate-900/10"
+              class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-inner shadow-slate-200"
             >
               <canvas
                 id="canvas"
@@ -315,7 +315,7 @@
 
     <div
       id="feedbackToast"
-      class="feedback-toast fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-white/90 px-5 py-2 text-sm font-semibold text-slate-900 shadow-xl shadow-slate-900/20"
+      class="feedback-toast fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 shadow-xl shadow-slate-300/50"
     >
       Action completed
     </div>
@@ -340,12 +340,13 @@
 
       const statusStyles = {
         connecting:
-          "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-amber-100 ring-1 ring-amber-200/60 bg-amber-500/20",
+          "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-amber-700 ring-1 ring-amber-200 bg-amber-50",
         connected:
-          "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-emerald-100 ring-1 ring-emerald-200/60 bg-emerald-500/20",
+          "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-emerald-700 ring-1 ring-emerald-200 bg-emerald-50",
         error:
-          "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-rose-100 ring-1 ring-rose-200/60 bg-rose-500/20",
-        idle: "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-white/90 ring-1 ring-white/30 bg-white/10",
+          "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-rose-700 ring-1 ring-rose-200 bg-rose-50",
+        idle:
+          "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold tracking-tight text-slate-600 ring-1 ring-slate-200 bg-slate-100",
       };
 
       let supabase, channel;
@@ -575,15 +576,37 @@
         if (historyStep < strokes.length - 1) {
           strokes.length = historyStep + 1;
         }
-        historyStep = strokes.length;
+
+        const visibleBeforeClear = getVisibleStrokeIds();
+        if (visibleBeforeClear.size === 0) {
+          showFeedback("Canvas is already clear");
+          return;
+        }
+
+        const deletedIds = Array.from(visibleBeforeClear);
+        strokes.push({ type: "erase", deletedIds });
+        historyStep = strokes.length - 1;
+
         redrawCanvas();
         updateHistoryButtons();
         saveToSession();
+
+        const newVisible = getVisibleStrokeIds();
+        const diff = computeStateDiff(visibleBeforeClear, newVisible);
+        if ((diff.added.length || diff.removed.length) && channel) {
+          channel.send({
+            type: "broadcast",
+            event: "student_state_change",
+            payload: { username, added: diff.added, removed: diff.removed },
+          });
+        }
+
         channel?.send({
           type: "broadcast",
           event: "student_clear",
           payload: { username },
         });
+
         showFeedback("Canvas cleared");
       }
 
